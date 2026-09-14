@@ -224,7 +224,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Responsive CSS
+# Responsive CSS to allow date column wrapping on mobile screens (<768px)
 st.markdown(
     """
     <style>
@@ -241,7 +241,7 @@ st.markdown(
 
 st.title("🌊 Tide Dashboard")
 
-# --- Session State for Date Navigation & Auto-Scroll ---
+# --- Session State for Date Navigation ---
 today_date = datetime.date.today()
 
 if "selected_month" not in st.session_state:
@@ -416,7 +416,7 @@ with tab_month:
         month_df = pd.DataFrame(records)
         display_df = month_df.drop(columns=["is_today"])
 
-        # Row styling logic
+        # Row styling logic using adaptive colors
         def style_rows(row):
             is_today = month_df.loc[row.name, "is_today"]
             if is_today:
@@ -508,31 +508,28 @@ with tab_month:
         html_table = styler.to_html(escape=False)
         today_idx = month_df[month_df["is_today"]].index
 
-        # Add target class to today's row for class-based DOM matching
+        # Add target id and focus trigger to force view alignment on #today-row
         if not today_idx.empty:
             target_str = f'<tr id="row{today_idx[0]}"'
-            replacement_str = f'<tr class="tide-today-row"'
+            replacement_str = f'<tr id="today-row" tabindex="-1"'
             html_table = html_table.replace(target_str, replacement_str)
 
-        st.write(html_table, unsafe_allow_html=True)
-
-        # Trigger DOM scroll across parent windows if the Today button was clicked
-        if st.session_state.should_scroll_today:
-            st.session_state.should_scroll_today = False
-            st.markdown(
-                """
-                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" 
-                     onload="
-                        const parentDoc = window.parent.document;
-                        const targetRow = parentDoc.querySelector('.tide-today-row');
-                        if (targetRow) {
-                            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if st.session_state.should_scroll_today:
+                focus_script = """
+                <script>
+                    setTimeout(function() {
+                        var row = document.getElementById('today-row');
+                        if (row) {
+                            row.focus();
+                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
-                     " 
-                     style="display:none;" />
-                """,
-                unsafe_allow_html=True,
-            )
+                    }, 50);
+                </script>
+                """
+                html_table += focus_script
+                st.session_state.should_scroll_today = False
+
+        st.write(html_table, unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
