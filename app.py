@@ -264,7 +264,7 @@ with col3:
     )
 with col4:
     st.button(
-        "📅 Current Month",
+        "📅 This Month",
         on_click=reset_to_current_month,
         use_container_width=True,
     )
