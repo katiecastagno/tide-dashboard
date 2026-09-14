@@ -440,6 +440,25 @@ with tab_month:
                 border-bottom: 1px solid #e2e8f0;
                 line-height: 1.3;
             }
+            /* Zebra Striping */
+            .custom-tide-table tbody tr:nth-child(odd) {
+                background-color: #ffffff;
+            }
+            .custom-tide-table tbody tr:nth-child(even) {
+                background-color: #f8fafc;
+            }
+            .custom-tide-table tbody tr:hover {
+                background-color: #e0f2fe !important;
+            }
+            /* Highlight Today's Row */
+            .custom-tide-table tbody tr.today-row {
+                background-color: #bae6fd !important;
+                font-weight: 600;
+            }
+            .custom-tide-table tbody tr.today-row td {
+                border-top: 1.5px solid #0284c7;
+                border-bottom: 1.5px solid #0284c7;
+            }
             /* Darker Section Divider Line */
             .custom-tide-table th.divider-col, 
             .custom-tide-table td.divider-col {
@@ -449,24 +468,8 @@ with tab_month:
                 font-size: 0.82em;
                 opacity: 0.85;
             }
-            .custom-tide-table tbody tr:nth-child(odd) td {
-                background-color: #ffffff !important;
-            }
-            .custom-tide-table tbody tr:nth-child(even) td {
-                background-color: #f8fafc !important;
-            }
-            .custom-tide-table tbody tr:hover td {
-                background-color: #e0f2fe !important;
-            }
-            .custom-tide-table tbody tr.today-row td {
-                background-color: #bae6fd !important;
-                font-weight: 600;
-                border-top: 1.5px solid #0284c7;
-                border-bottom: 1.5px solid #0284c7;
-            }
         </style>
         """
-
         st.markdown(custom_css + table_html, unsafe_allow_html=True)
 
     else:
