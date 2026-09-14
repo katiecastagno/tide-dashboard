@@ -6,7 +6,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --- Configured Locations ---
 STATIONS = {
@@ -313,7 +312,7 @@ with tab_month:
                 time_str = (
                     tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
                 )
-                height_str = f"<span style='font-size: 0.82em; color: #475569;'>({tide_row['v']:.1f} ft)</span>"
+                height_str = f"<span style='font-size: 0.82em; opacity: 0.8;'>({tide_row['v']:.1f} ft)</span>"
 
                 is_daylight = sr_time <= time_obj <= ss_time
 
@@ -374,116 +373,69 @@ with tab_month:
             current_day += datetime.timedelta(days=1)
 
         month_df = pd.DataFrame(records)
-        headers = [col for col in month_df.columns if col != "is_today"]
+        display_df = month_df.drop(columns=["is_today"])
 
-        def get_header_class(header_name):
-            if header_name == "Date":
-                return "divider-col"
-            elif header_name == "High 2" and "Low 1" in headers:
-                return "divider-col"
-            elif header_name in ["High 2", "Low 2"]:
-                return "divider-col"
-            elif header_name == "Set (PM)":
-                return "divider-col"
-            return ""
+        # Row styling logic using CSS variables to guarantee dark mode support
+        def style_rows(row):
+            is_today = month_df.loc[row.name, "is_today"]
 
-        # Isolated component HTML + CSS
-        component_html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                background-color: transparent;
-            }
-            .tide-table-wrapper table {
-                width: 100%;
-                border-collapse: separate;
-                border-spacing: 0;
-                font-size: 0.90rem;
-                border: 1px solid #cbd5e1;
-                border-radius: 8px;
-            }
-            .tide-table-wrapper th {
-                background-color: #f1f5f9;
-                color: #0f172a;
-                font-weight: 700;
-                padding: 10px 8px;
-                text-align: center;
-                vertical-align: middle;
-                border-bottom: 2px solid #94a3b8;
-            }
-            .tide-table-wrapper td {
-                padding: 8px 6px;
-                text-align: center;
-                vertical-align: middle;
-                border-bottom: 1px solid #e2e8f0;
-                line-height: 1.35;
-            }
-            
-            /* Zebra Striping */
-            .tide-table-wrapper tr:nth-child(even) td {
-                background-color: #f8fafc;
-            }
-            .tide-table-wrapper tr:nth-child(odd) td {
-                background-color: #ffffff;
-            }
-            
-            /* Hover State */
-            .tide-table-wrapper tr:hover td {
-                background-color: #e0f2fe !important;
-            }
-            
-            /* Today Row Highlight */
-            .tide-table-wrapper tr.today-row td {
-                background-color: #bae6fd !important;
-                font-weight: 600;
-                border-top: 2px solid #0284c7;
-                border-bottom: 2px solid #0284c7;
-            }
-            
-            /* Vertical Dividers */
-            .tide-table-wrapper th.divider-col, 
-            .tide-table-wrapper td.divider-col {
-                border-right: 2px solid #94a3b8;
-            }
-        </style>
-        </head>
-        <body>
-        <div class='tide-table-wrapper'>
-        <table>
-            <thead>
-                <tr>
-        """
+            if is_today:
+                bg = "background-color: rgba(2, 132, 199, 0.25); font-weight: bold;"
+            elif row.name % 2 == 1:
+                bg = "background-color: rgba(128, 128, 128, 0.08);"  # Adaptive zebra stripe
+            else:
+                bg = "background-color: transparent;"
 
-        for h in headers:
-            cls = get_header_class(h)
-            cls_attr = f" class='{cls}'" if cls else ""
-            component_html += f"<th{cls_attr}>{h}</th>"
+            return [bg] * len(row)
 
-        component_html += "</tr></thead><tbody>"
+        # Apply Pandas Styler
+        styled_df = (
+            display_df.style.apply(style_rows, axis=1).set_table_styles(
+                [
+                    {
+                        "selector": "table",
+                        "props": [
+                            ("width", "100%"),
+                            ("border-collapse", "separate"),
+                            ("border-spacing", "0"),
+                            ("border-radius", "8px"),
+                            ("border", "1px solid rgba(128, 128, 128, 0.2)"),
+                        ],
+                    },
+                    {
+                        "selector": "th",
+                        "props": [
+                            (
+                                "background-color",
+                                "rgba(128, 128, 128, 0.15)",
+                            ),
+                            ("font-weight", "bold"),
+                            ("text-align", "center"),
+                            ("padding", "10px 8px"),
+                            (
+                                "border-bottom",
+                                "2px solid rgba(128, 128, 128, 0.3)",
+                            ),
+                        ],
+                    },
+                    {
+                        "selector": "td",
+                        "props": [
+                            ("text-align", "center"),
+                            ("vertical-align", "middle"),
+                            ("padding", "8px 6px"),
+                            ("line-height", "1.35"),
+                            (
+                                "border-bottom",
+                                "1px solid rgba(128, 128, 128, 0.15)",
+                            ),
+                        ],
+                    },
+                ]
+            )
+        )
 
-        for idx, row in month_df.iterrows():
-            tr_class = " class='today-row'" if row["is_today"] else ""
-            component_html += f"<tr{tr_class}>"
-
-            for col in headers:
-                cls = get_header_class(col)
-                cls_attr = f" class='{cls}'" if cls else ""
-                component_html += f"<td{cls_attr}>{row[col]}</td>"
-
-            component_html += "</tr>"
-
-        component_html += "</tbody></table></div></body></html>"
-
-        # Calculate exact pixel height (approx 48px per row + 60px header margin)
-        calculated_height = (len(month_df) * 48) + 60
-
-        # Render isolated iframe without scrollbars
-        components.html(component_html, height=calculated_height, scrolling=False)
+        st.write(styled_df.to_html(escape=False), unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
@@ -492,7 +444,9 @@ with tab_month:
 with tab_daily:
     selected_day = st.date_input(
         "Select Date",
-        value=today_date if start_date <= today_date <= end_date else start_date,
+        value=today_date
+        if start_date <= today_date <= end_date
+        else start_date,
         min_value=start_date,
         max_value=end_date,
         format="MM/DD/YYYY",
