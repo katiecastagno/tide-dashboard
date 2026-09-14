@@ -366,7 +366,7 @@ with tab_month:
                 bg = "background-color: transparent;"
             return [bg] * len(row)
 
-        # Dynamic selection of separator columns depending on active view mode
+        # Identify separator columns dynamically based on active view mode
         divider_cols = ["Date"]
         if "High 2" in display_df.columns:
             divider_cols.append("High 2")
@@ -381,65 +381,67 @@ with tab_month:
         if "Set (PM)" in display_df.columns:
             divider_cols.append("Set (PM)")
 
-        # Custom CSS rules for Styler table layout & dividers
-        table_styles = [
-            {
-                "selector": "",
-                "props": [
-                    ("width", "100%"),
-                    ("table-layout", "fixed"),
-                    ("border-collapse", "separate"),
-                    ("border-spacing", "0"),
-                    ("border-radius", "8px"),
-                    ("border", "1px solid rgba(128, 128, 128, 0.25)"),
-                ],
-            },
-            {
-                "selector": "th",
-                "props": [
-                    ("background-color", "rgba(128, 128, 128, 0.15)"),
-                    ("font-weight", "bold"),
-                    ("text-align", "center"),
-                    ("padding", "10px 4px"),
-                    ("border-bottom", "2px solid rgba(128, 128, 128, 0.3)"),
-                ],
-            },
-            {
-                "selector": "td",
-                "props": [
-                    ("text-align", "center"),
-                    ("vertical-align", "middle"),
-                    ("padding", "8px 4px"),
-                    ("line-height", "1.35"),
-                    ("border-bottom", "1px solid rgba(128, 128, 128, 0.15)"),
-                ],
-            },
-            # Row hover highlighting
-            {
-                "selector": "tr:hover td",
-                "props": [
-                    ("background-color", "rgba(128, 128, 128, 0.18) !important"),
-                ],
-            },
-        ]
-
-        # Add heavy vertical dividers for column groups
-        for col in divider_cols:
-            col_class = f"col_{display_df.columns.get_loc(col)}"
-            table_styles.append({
-                "selector": f"th.{col_class}, td.{col_class}",
-                "props": [("border-right", "2px solid rgba(128, 128, 128, 0.4)")],
-            })
-
-        # Apply Pandas Styler without index column
-        styled_df = (
+        # Create base Styler object
+        styler = (
             display_df.style
             .hide(axis="index")
             .apply(style_rows, axis=1)
-            .set_table_styles(table_styles)
+            .set_table_styles([
+                {
+                    "selector": "",
+                    "props": [
+                        ("width", "100%"),
+                        ("table-layout", "fixed"),
+                        ("border-collapse", "separate"),
+                        ("border-spacing", "0"),
+                        ("border-radius", "8px"),
+                        ("border", "1px solid rgba(128, 128, 128, 0.25)"),
+                    ],
+                },
+                {
+                    "selector": "th",
+                    "props": [
+                        ("background-color", "rgba(128, 128, 128, 0.15)"),
+                        ("font-weight", "bold"),
+                        ("text-align", "center"),
+                        ("padding", "10px 4px"),
+                        ("border-bottom", "2px solid rgba(128, 128, 128, 0.3)"),
+                    ],
+                },
+                {
+                    "selector": "td",
+                    "props": [
+                        ("text-align", "center"),
+                        ("vertical-align", "middle"),
+                        ("padding", "8px 4px"),
+                        ("line-height", "1.35"),
+                        ("border-bottom", "1px solid rgba(128, 128, 128, 0.15)"),
+                    ],
+                },
+                {
+                    "selector": "tr:hover td",
+                    "props": [
+                        ("background-color", "rgba(128, 128, 128, 0.18) !important"),
+                    ],
+                },
+            ])
         )
 
-        st.write(styled_df.to_html(escape=False), unsafe_allow_html=True)
+        # Apply inline right borders directly to data cells for divider columns
+        border_style = {"border-right": "2px solid rgba(128, 128, 128, 0.45)"}
+        styler.set_properties(subset=divider_cols, **border_style)
+
+        # Apply right borders to the corresponding header cells (th)
+        header_styles = []
+        for col in divider_cols:
+            col_idx = display_df.columns.get_loc(col) + 1  # 1-based index for nth-child
+            header_styles.append({
+                "selector": f"th:nth-child({col_idx})",
+                "props": [("border-right", "2px solid rgba(128, 128, 128, 0.45)")],
+            })
+        styler.set_table_styles(header_styles, overwrite=False)
+
+        st.write(styler.to_html(escape=False), unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
