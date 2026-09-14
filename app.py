@@ -376,100 +376,56 @@ with tab_month:
 
         month_df = pd.DataFrame(records)
 
-        # Map vertical divider CSS classes to corresponding headers
         headers = [col for col in month_df.columns if col != "is_today"]
-        
-        def get_header_class(header_name):
-            classes = []
-            if header_name == "Date":
-                classes.append("divider-col")
-            elif header_name == "High 2" and "Low 1" in headers:
-                classes.append("divider-col")
-            elif header_name in ["High 2", "Low 2"]:
-                classes.append("divider-col")
-            elif header_name == "Set (PM)":
-                classes.append("divider-col")
-            return " ".join(classes)
 
-        table_html = "<table class='custom-tide-table'><thead><tr>"
+        def is_divider(header_name):
+            if header_name == "Date":
+                return True
+            elif header_name == "High 2" and "Low 1" in headers:
+                return True
+            elif header_name in ["High 2", "Low 2"]:
+                return True
+            elif header_name == "Set (PM)":
+                return True
+            return False
+
+        table_html = "<table style='width:100%; border-collapse:collapse; margin-top:12px; font-size:0.88rem; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;'>"
+        
+        # Header Row
+        table_html += "<thead><tr>"
         for h in headers:
-            cls = get_header_class(h)
-            cls_attr = f" class='{cls}'" if cls else ""
-            table_html += f"<th{cls_attr}>{h}</th>"
+            divider_style = "border-right: 2px solid #94a3b8 !important;" if is_divider(h) else ""
+            table_html += f"<th style='background-color:#f0f2f5 !important; color:#1f2328; font-weight:600; padding:10px 8px; text-align:center; vertical-align:middle; border-bottom:2px solid #cbd5e1; {divider_style}'>{h}</th>"
         table_html += "</tr></thead><tbody>"
 
+        # Body Rows with Inline Alternating Colors & Dividers
         for idx, row in month_df.iterrows():
-            row_class = "today-row" if row["is_today"] else ""
-            table_html += f"<tr class='{row_class}'>"
+            if row["is_today"]:
+                bg_color = "#bae6fd"
+                row_border = "border-top: 1.5px solid #0284c7; border-bottom: 1.5px solid #0284c7;"
+            else:
+                bg_color = "#ffffff" if idx % 2 == 0 else "#f8fafc"
+                row_border = "border-bottom: 1px solid #e2e8f0;"
+
+            table_html += "<tr>"
             for col in headers:
-                cls = get_header_class(col)
-                cls_attr = f" class='{cls}'" if cls else ""
-                table_html += f"<td{cls_attr}>{row[col]}</td>"
+                divider_style = "border-right: 2px solid #94a3b8 !important;" if is_divider(col) else ""
+                cell_style = f"background-color: {bg_color} !important; padding: 8px 6px; text-align: center; vertical-align: middle; line-height: 1.3; {row_border} {divider_style}"
+                table_html += f"<td style='{cell_style}'>{row[col]}</td>"
             table_html += "</tr>"
 
         table_html += "</tbody></table>"
 
-        custom_css = """
+        extra_css = """
         <style>
-            .custom-tide-table {
-                width: 100%;
-                border-collapse: separate;
-                border-spacing: 0;
-                margin-top: 12px;
-                font-size: 0.88rem;
-                border: 1px solid #cbd5e1;
-                border-radius: 8px;
-                overflow: hidden;
-            }
-            .custom-tide-table th {
-                position: sticky;
-                top: 0;
-                z-index: 2;
-                background-color: #f0f2f5 !important;
-                color: #1f2328;
-                font-weight: 600;
-                padding: 10px 8px;
-                text-align: center !important;
-                vertical-align: middle !important;
-                border-bottom: 2px solid #cbd5e1;
-            }
-            .custom-tide-table td {
-                padding: 8px 6px;
-                text-align: center !important;
-                vertical-align: middle !important;
-                border-bottom: 1px solid #e2e8f0;
-                line-height: 1.3;
-            }
-            /* Explicit td-level Zebra Striping */
-            .custom-tide-table tbody tr:nth-child(odd) td {
-                background-color: #ffffff !important;
-            }
-            .custom-tide-table tbody tr:nth-child(even) td {
-                background-color: #f8fafc !important;
-            }
-            /* Hover State */
-            .custom-tide-table tbody tr:hover td {
-                background-color: #e0f2fe !important;
-            }
-            /* Today's Row Highlight */
-            .custom-tide-table tbody tr.today-row td {
-                background-color: #bae6fd !important;
-                font-weight: 600;
-                border-top: 1.5px solid #0284c7;
-                border-bottom: 1.5px solid #0284c7;
-            }
-            /* Darker Section Divider Line */
-            .custom-tide-table th.divider-col, 
-            .custom-tide-table td.divider-col {
-                border-right: 2px solid #94a3b8 !important;
-            }
             .tide-height {
                 font-size: 0.82em;
                 opacity: 0.85;
             }
         </style>
         """
-        st.markdown(custom_css + table_html, unsafe_allow_html=True)
+
+        st.markdown(extra_css + table_html, unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
