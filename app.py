@@ -149,11 +149,9 @@ def fetch_month_hilo(station_id, start_date, end_date):
 
 @st.cache_data(ttl=3600)
 def fetch_daily_tide_data(station_id, selected_date):
-    # Buffer range by +/- 1 day to smoothly interpolate curve edges
     start_buffer = selected_date - datetime.timedelta(days=1)
     end_buffer = selected_date + datetime.timedelta(days=1)
 
-    # 1. Fetch High/Low predictions (Supported by ALL stations)
     hilo_url = (
         f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
         f"begin_date={start_buffer.strftime('%Y%m%d')}&end_date={end_buffer.strftime('%Y%m%d')}"
@@ -168,7 +166,6 @@ def fetch_daily_tide_data(station_id, selected_date):
         h_df["t"] = pd.to_datetime(h_df["t"])
         h_df["v"] = h_df["v"].astype(float)
 
-        # Generate smooth 5-minute interpolated curve using cosine rule of 12ths
         times = []
         vals = []
 
@@ -177,22 +174,19 @@ def fetch_daily_tide_data(station_id, selected_date):
             t2, v2 = h_df.iloc[i + 1]["t"], h_df.iloc[i + 1]["v"]
 
             dt_sec = (t2 - t1).total_seconds()
-            num_steps = int(dt_sec / 300)  # 5-min intervals
+            num_steps = int(dt_sec / 300)
 
             for s in range(num_steps):
                 curr_t = t1 + datetime.timedelta(seconds=s * 300)
                 phase = (s / num_steps) * math.pi
                 curr_v = (v1 + v2) / 2 + ((v1 - v2) / 2) * math.cos(phase)
 
-                if (
-                    curr_t.date() == selected_date
-                ):  # Filter down to strictly selected date
+                if curr_t.date() == selected_date:
                     times.append(curr_t)
                     vals.append(curr_v)
 
         pred_df = pd.DataFrame({"t": times, "v": vals})
 
-    # 2. Fetch Real-Time Observed Water Levels (Primary stations only)
     obs_df = pd.DataFrame()
     try:
         date_str = selected_date.strftime("%Y%m%d")
@@ -382,18 +376,35 @@ with tab_month:
 
         month_df = pd.DataFrame(records)
 
-        # HTML Table Construction
+        # Map vertical divider CSS classes to corresponding headers
         headers = [col for col in month_df.columns if col != "is_today"]
+        
+        def get_header_class(header_name):
+            classes = []
+            if header_name == "Date":
+                classes.append("divider-col")
+            elif header_name == "High 2" and "Low 1" in headers:
+                classes.append("divider-col")
+            elif header_name in ["High 2", "Low 2"]:
+                classes.append("divider-col")
+            elif header_name == "Set (PM)":
+                classes.append("divider-col")
+            return " ".join(classes)
+
         table_html = "<table class='custom-tide-table'><thead><tr>"
         for h in headers:
-            table_html += f"<th>{h}</th>"
+            cls = get_header_class(h)
+            cls_attr = f" class='{cls}'" if cls else ""
+            table_html += f"<th{cls_attr}>{h}</th>"
         table_html += "</tr></thead><tbody>"
 
         for idx, row in month_df.iterrows():
             row_class = "today-row" if row["is_today"] else ""
             table_html += f"<tr class='{row_class}'>"
             for col in headers:
-                table_html += f"<td>{row[col]}</td>"
+                cls = get_header_class(col)
+                cls_attr = f" class='{cls}'" if cls else ""
+                table_html += f"<td{cls_attr}>{row[col]}</td>"
             table_html += "</tr>"
 
         table_html += "</tbody></table>"
@@ -406,7 +417,7 @@ with tab_month:
                 border-spacing: 0;
                 margin-top: 12px;
                 font-size: 0.88rem;
-                border: 1px solid #d0d7de;
+                border: 1px solid #cbd5e1;
                 border-radius: 8px;
                 overflow: hidden;
             }
@@ -420,14 +431,19 @@ with tab_month:
                 padding: 10px 8px;
                 text-align: center !important;
                 vertical-align: middle !important;
-                border-bottom: 2px solid #c0c7de;
+                border-bottom: 2px solid #cbd5e1;
             }
             .custom-tide-table td {
                 padding: 8px 6px;
                 text-align: center !important;
                 vertical-align: middle !important;
-                border-bottom: 1px solid #e1e4e8;
+                border-bottom: 1px solid #e2e8f0;
                 line-height: 1.3;
+            }
+            /* Darker Section Divider Line */
+            .custom-tide-table th.divider-col, 
+            .custom-tide-table td.divider-col {
+                border-right: 2px solid #94a3b8 !important;
             }
             .tide-height {
                 font-size: 0.82em;
@@ -437,7 +453,7 @@ with tab_month:
                 background-color: #ffffff !important;
             }
             .custom-tide-table tbody tr:nth-child(even) td {
-                background-color: #f1f5f9 !important;
+                background-color: #f8fafc !important;
             }
             .custom-tide-table tbody tr:hover td {
                 background-color: #e0f2fe !important;
