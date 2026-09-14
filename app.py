@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 # --- Configured Locations ---
 STATIONS = {
@@ -231,7 +232,7 @@ def reset_to_today():
     st.session_state.selected_year = today_date.year
 
 
-# --- Top Controls (Aligned to Bottom) ---
+# --- Top Controls ---
 col1, col2, col3, col4 = st.columns([2, 1, 1, 1], vertical_alignment="bottom")
 with col1:
     selected_location = st.selectbox(
@@ -378,54 +379,114 @@ with tab_month:
 
         headers = [col for col in month_df.columns if col != "is_today"]
 
-        def is_divider(header_name):
+        def get_header_class(header_name):
+            classes = []
             if header_name == "Date":
-                return True
+                classes.append("divider-col")
             elif header_name == "High 2" and "Low 1" in headers:
-                return True
+                classes.append("divider-col")
             elif header_name in ["High 2", "Low 2"]:
-                return True
+                classes.append("divider-col")
             elif header_name == "Set (PM)":
-                return True
-            return False
+                classes.append("divider-col")
+            return " ".join(classes)
 
-        table_html = "<table style='width:100%; border-collapse:collapse; margin-top:12px; font-size:0.88rem; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;'>"
-        
-        # Header Row
-        table_html += "<thead><tr>"
-        for h in headers:
-            divider_style = "border-right: 2px solid #94a3b8 !important;" if is_divider(h) else ""
-            table_html += f"<th style='background-color:#f0f2f5 !important; color:#1f2328; font-weight:600; padding:10px 8px; text-align:center; vertical-align:middle; border-bottom:2px solid #cbd5e1; {divider_style}'>{h}</th>"
-        table_html += "</tr></thead><tbody>"
-
-        # Body Rows with Inline Alternating Colors & Dividers
-        for idx, row in month_df.iterrows():
-            if row["is_today"]:
-                bg_color = "#bae6fd"
-                row_border = "border-top: 1.5px solid #0284c7; border-bottom: 1.5px solid #0284c7;"
-            else:
-                bg_color = "#ffffff" if idx % 2 == 0 else "#f8fafc"
-                row_border = "border-bottom: 1px solid #e2e8f0;"
-
-            table_html += "<tr>"
-            for col in headers:
-                divider_style = "border-right: 2px solid #94a3b8 !important;" if is_divider(col) else ""
-                cell_style = f"background-color: {bg_color} !important; padding: 8px 6px; text-align: center; vertical-align: middle; line-height: 1.3; {row_border} {divider_style}"
-                table_html += f"<td style='{cell_style}'>{row[col]}</td>"
-            table_html += "</tr>"
-
-        table_html += "</tbody></table>"
-
-        extra_css = """
+        # Isolated Component HTML with strict CSS
+        component_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
         <style>
-            .tide-height {
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: transparent;
+            }}
+            .custom-tide-table {{
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                font-size: 0.88rem;
+                border: 1px solid #cbd5e1;
+                border-radius: 8px;
+                overflow: hidden;
+            }}
+            .custom-tide-table th {{
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                background-color: #f0f2f5;
+                color: #1f2328;
+                font-weight: 600;
+                padding: 10px 8px;
+                text-align: center;
+                vertical-align: middle;
+                border-bottom: 2px solid #cbd5e1;
+            }}
+            .custom-tide-table td {{
+                padding: 8px 6px;
+                text-align: center;
+                vertical-align: middle;
+                border-bottom: 1px solid #e2e8f0;
+                line-height: 1.3;
+            }}
+            /* Native Zebra Striping */
+            .custom-tide-table tbody tr:nth-child(odd) td {{
+                background-color: #ffffff;
+            }}
+            .custom-tide-table tbody tr:nth-child(even) td {{
+                background-color: #f8fafc;
+            }}
+            /* Hover State */
+            .custom-tide-table tbody tr:hover td {{
+                background-color: #e0f2fe !important;
+            }}
+            /* Today Highlight Row */
+            .custom-tide-table tbody tr.today-row td {{
+                background-color: #bae6fd !important;
+                font-weight: 600;
+                border-top: 1.5px solid #0284c7;
+                border-bottom: 1.5px solid #0284c7;
+            }}
+            /* Darker Section Divider Line */
+            .custom-tide-table th.divider-col, 
+            .custom-tide-table td.divider-col {{
+                border-right: 2px solid #94a3b8 !important;
+            }}
+            .tide-height {{
                 font-size: 0.82em;
                 opacity: 0.85;
-            }
+            }}
         </style>
+        </head>
+        <body>
+            <table class="custom-tide-table">
+                <thead>
+                    <tr>
         """
 
-        st.markdown(extra_css + table_html, unsafe_allow_html=True)
+        for h in headers:
+            cls = get_header_class(h)
+            cls_attr = f' class="{cls}"' if cls else ""
+            component_html += f"<th{cls_attr}>{h}</th>"
+
+        component_html += "</tr></thead><tbody>"
+
+        for idx, row in month_df.iterrows():
+            row_class = "today-row" if row["is_today"] else ""
+            component_html += f'<tr class="{row_class}">'
+            for col in headers:
+                cls = get_header_class(col)
+                cls_attr = f' class="{cls}"' if cls else ""
+                component_html += f"<td{cls_attr}>{row[col]}</td>"
+            component_html += "</tr>"
+
+        component_html += "</tbody></table></body></html>"
+
+        # Calculate dynamic iframe height based on row count
+        iframe_height = 50 + (len(month_df) * 48)
+        components.html(component_html, height=iframe_height, scrolling=True)
 
     else:
         st.error("Unable to load tide data.")
