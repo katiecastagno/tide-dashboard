@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 # --- Configured Locations ---
 STATIONS = {
@@ -386,88 +387,103 @@ with tab_month:
                 return "divider-col"
             return ""
 
-        # Global CSS block targeting native markdown table elements directly
-        table_style = """
+        # Isolated component HTML + CSS
+        component_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
         <style>
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper table {
-                width: 100% !important;
-                border-collapse: separate !important;
-                border-spacing: 0 !important;
-                margin-top: 12px !important;
-                font-size: 0.90rem !important;
-                border: 1px solid #cbd5e1 !important;
-                border-radius: 8px !important;
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: transparent;
             }
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper th {
-                background-color: #f1f5f9 !important;
-                color: #0f172a !important;
-                font-weight: 700 !important;
-                padding: 10px 8px !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-                border-bottom: 2px solid #94a3b8 !important;
+            .tide-table-wrapper table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                font-size: 0.90rem;
+                border: 1px solid #cbd5e1;
+                border-radius: 8px;
             }
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper td {
-                padding: 8px 6px !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-                border-bottom: 1px solid #e2e8f0 !important;
-                line-height: 1.35 !important;
+            .tide-table-wrapper th {
+                background-color: #f1f5f9;
+                color: #0f172a;
+                font-weight: 700;
+                padding: 10px 8px;
+                text-align: center;
+                vertical-align: middle;
+                border-bottom: 2px solid #94a3b8;
+            }
+            .tide-table-wrapper td {
+                padding: 8px 6px;
+                text-align: center;
+                vertical-align: middle;
+                border-bottom: 1px solid #e2e8f0;
+                line-height: 1.35;
             }
             
-            /* Hover state override on cells */
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr:hover td {
+            /* Zebra Striping */
+            .tide-table-wrapper tr:nth-child(even) td {
+                background-color: #f8fafc;
+            }
+            .tide-table-wrapper tr:nth-child(odd) td {
+                background-color: #ffffff;
+            }
+            
+            /* Hover State */
+            .tide-table-wrapper tr:hover td {
                 background-color: #e0f2fe !important;
             }
             
-            /* Today Row Highlight font override */
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr.today-row td {
-                font-weight: 600 !important;
-                border-top: 2px solid #0284c7 !important;
-                border-bottom: 2px solid #0284c7 !important;
+            /* Today Row Highlight */
+            .tide-table-wrapper tr.today-row td {
+                background-color: #bae6fd !important;
+                font-weight: 600;
+                border-top: 2px solid #0284c7;
+                border-bottom: 2px solid #0284c7;
             }
             
-            /* Vertical Divider Columns */
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper th.divider-col, 
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper td.divider-col {
-                border-right: 2px solid #94a3b8 !important;
+            /* Vertical Dividers */
+            .tide-table-wrapper th.divider-col, 
+            .tide-table-wrapper td.divider-col {
+                border-right: 2px solid #94a3b8;
             }
         </style>
+        </head>
+        <body>
+        <div class='tide-table-wrapper'>
+        <table>
+            <thead>
+                <tr>
         """
 
-        table_html = "<div class='tide-table-wrapper'><table>"
-        table_html += "<thead><tr>"
         for h in headers:
             cls = get_header_class(h)
             cls_attr = f" class='{cls}'" if cls else ""
-            table_html += f"<th{cls_attr}>{h}</th>"
-        table_html += "</tr></thead><tbody>"
+            component_html += f"<th{cls_attr}>{h}</th>"
+
+        component_html += "</tr></thead><tbody>"
 
         for idx, row in month_df.iterrows():
-            is_today = row["is_today"]
-            
-            # Inline background assignment bypasses Streamlit's style engine completely
-            if is_today:
-                bg_color = "#bae6fd"  # Highlight blue for current date
-            elif idx % 2 == 1:
-                bg_color = "#f1f5f9"  # Alternating soft slate zebra stripe
-            else:
-                bg_color = "#ffffff"  # Clean white background
+            tr_class = " class='today-row'" if row["is_today"] else ""
+            component_html += f"<tr{tr_class}>"
 
-            tr_class = " class='today-row'" if is_today else ""
-            table_html += f"<tr{tr_class}>"
-            
             for col in headers:
                 cls = get_header_class(col)
                 cls_attr = f" class='{cls}'" if cls else ""
-                style_attr = f"style='background-color: {bg_color} !important;'"
-                table_html += f"<td {cls_attr} {style_attr}>{row[col]}</td>"
-                
-            table_html += "</tr>"
+                component_html += f"<td{cls_attr}>{row[col]}</td>"
 
-        table_html += "</tbody></table></div>"
+            component_html += "</tr>"
 
-        st.markdown(table_style + table_html, unsafe_allow_html=True)
+        component_html += "</tbody></table></div></body></html>"
+
+        # Calculate exact pixel height (approx 48px per row + 60px header margin)
+        calculated_height = (len(month_df) * 48) + 60
+
+        # Render isolated iframe without scrollbars
+        components.html(component_html, height=calculated_height, scrolling=False)
 
     else:
         st.error("Unable to load tide data.")
