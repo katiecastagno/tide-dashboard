@@ -325,6 +325,8 @@ with col_map:
 
 tab_month, tab_daily = st.tabs(["🗓️ Monthly Table", "📈 Daily Graph"])
 
+import streamlit.components.v1 as components
+
 # --- Monthly Table View ---
 with tab_month:
     raw_hilo = fetch_month_hilo(station_info["id"], start_date, end_date)
@@ -516,17 +518,27 @@ with tab_month:
             replacement_str = f'<tr id="today-row"'
             html_table = html_table.replace(target_str, replacement_str)
 
-        # Direct inline image onerror script execution to bypass iframe isolation
-        if st.session_state.should_scroll_today and not today_idx.empty:
-            scroll_img_trigger = """<img src="x" onerror="(function(){
-                var doc = window.parent.document;
-                var el = doc.getElementById('today-row');
-                if(el){ el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
-            })(); this.remove();" style="display:none;" />"""
-            html_table = scroll_img_trigger + html_table
-            st.session_state.should_scroll_today = False
-
+        # Render Table
         st.write(html_table, unsafe_allow_html=True)
+
+        # Reliable Scroll Trigger via Component Scripting
+        if st.session_state.should_scroll_today and not today_idx.empty:
+            components.html(
+                """
+                <script>
+                setTimeout(function() {
+                    var doc = window.parent.document;
+                    var el = doc.getElementById('today-row');
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 300);
+                </script>
+                """,
+                height=0,
+                width=0,
+            )
+            st.session_state.should_scroll_today = False
 
     else:
         st.error("Unable to load tide data.")
