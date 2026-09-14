@@ -309,9 +309,7 @@ with tab_month:
 
             def format_tide(tide_row, is_high_tide):
                 time_obj = tide_row["t"].time()
-                time_str = (
-                    tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
-                )
+                time_str = tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
                 height_str = f"<span style='font-size: 0.82em; opacity: 0.8;'>({tide_row['v']:.1f} ft)</span>"
 
                 is_daylight = sr_time <= time_obj <= ss_time
@@ -319,35 +317,17 @@ with tab_month:
                 should_highlight = (
                     is_daylight and is_high_tide and highlight_daylight_highs
                 ) or (
-                    is_daylight
-                    and not is_high_tide
-                    and highlight_daylight_lows
+                    is_daylight and not is_high_tide and highlight_daylight_lows
                 )
 
                 if should_highlight:
                     return f"<mark style='background-color: #fef08a; color: #854d0e; padding: 2px 4px; border-radius: 4px; display: inline-block;'><b>{time_str}</b><br>{height_str}</mark>"
                 return f"<b>{time_str}</b><br>{height_str}"
 
-            h1 = (
-                format_tide(high_tides.iloc[0], is_high_tide=True)
-                if len(high_tides) > 0
-                else "-"
-            )
-            h2 = (
-                format_tide(high_tides.iloc[1], is_high_tide=True)
-                if len(high_tides) > 1
-                else "-"
-            )
-            l1 = (
-                format_tide(low_tides.iloc[0], is_high_tide=False)
-                if len(low_tides) > 0
-                else "-"
-            )
-            l2 = (
-                format_tide(low_tides.iloc[1], is_high_tide=False)
-                if len(low_tides) > 1
-                else "-"
-            )
+            h1 = format_tide(high_tides.iloc[0], is_high_tide=True) if len(high_tides) > 0 else "-"
+            h2 = format_tide(high_tides.iloc[1], is_high_tide=True) if len(high_tides) > 1 else "-"
+            l1 = format_tide(low_tides.iloc[0], is_high_tide=False) if len(low_tides) > 0 else "-"
+            l2 = format_tide(low_tides.iloc[1], is_high_tide=False) if len(low_tides) > 1 else "-"
 
             sr_fmt = sr_time.strftime("%I:%M").lstrip("0")
             ss_fmt = ss_time.strftime("%I:%M").lstrip("0")
@@ -375,64 +355,88 @@ with tab_month:
         month_df = pd.DataFrame(records)
         display_df = month_df.drop(columns=["is_today"])
 
-        # Row styling logic using CSS variables to guarantee dark mode support
+        # Row styling logic using adaptive colors
         def style_rows(row):
             is_today = month_df.loc[row.name, "is_today"]
-
             if is_today:
                 bg = "background-color: rgba(2, 132, 199, 0.25); font-weight: bold;"
             elif row.name % 2 == 1:
-                bg = "background-color: rgba(128, 128, 128, 0.08);"  # Adaptive zebra stripe
+                bg = "background-color: rgba(128, 128, 128, 0.08);"
             else:
                 bg = "background-color: transparent;"
-
             return [bg] * len(row)
 
-        # Apply Pandas Styler
+        # Dynamic selection of separator columns depending on active view mode
+        divider_cols = ["Date"]
+        if "High 2" in display_df.columns:
+            divider_cols.append("High 2")
+        elif "High 1" in display_df.columns:
+            divider_cols.append("High 1")
+
+        if "Low 2" in display_df.columns:
+            divider_cols.append("Low 2")
+        elif "Low 1" in display_df.columns:
+            divider_cols.append("Low 1")
+
+        if "Set (PM)" in display_df.columns:
+            divider_cols.append("Set (PM)")
+
+        # Custom CSS rules for Styler table layout & dividers
+        table_styles = [
+            {
+                "selector": "",
+                "props": [
+                    ("width", "100%"),
+                    ("table-layout", "fixed"),
+                    ("border-collapse", "separate"),
+                    ("border-spacing", "0"),
+                    ("border-radius", "8px"),
+                    ("border", "1px solid rgba(128, 128, 128, 0.25)"),
+                ],
+            },
+            {
+                "selector": "th",
+                "props": [
+                    ("background-color", "rgba(128, 128, 128, 0.15)"),
+                    ("font-weight", "bold"),
+                    ("text-align", "center"),
+                    ("padding", "10px 4px"),
+                    ("border-bottom", "2px solid rgba(128, 128, 128, 0.3)"),
+                ],
+            },
+            {
+                "selector": "td",
+                "props": [
+                    ("text-align", "center"),
+                    ("vertical-align", "middle"),
+                    ("padding", "8px 4px"),
+                    ("line-height", "1.35"),
+                    ("border-bottom", "1px solid rgba(128, 128, 128, 0.15)"),
+                ],
+            },
+            # Row hover highlighting
+            {
+                "selector": "tr:hover td",
+                "props": [
+                    ("background-color", "rgba(128, 128, 128, 0.18) !important"),
+                ],
+            },
+        ]
+
+        # Add heavy vertical dividers for column groups
+        for col in divider_cols:
+            col_class = f"col_{display_df.columns.get_loc(col)}"
+            table_styles.append({
+                "selector": f"th.{col_class}, td.{col_class}",
+                "props": [("border-right", "2px solid rgba(128, 128, 128, 0.4)")],
+            })
+
+        # Apply Pandas Styler without index column
         styled_df = (
-            display_df.style.apply(style_rows, axis=1).set_table_styles(
-                [
-                    {
-                        "selector": "table",
-                        "props": [
-                            ("width", "100%"),
-                            ("border-collapse", "separate"),
-                            ("border-spacing", "0"),
-                            ("border-radius", "8px"),
-                            ("border", "1px solid rgba(128, 128, 128, 0.2)"),
-                        ],
-                    },
-                    {
-                        "selector": "th",
-                        "props": [
-                            (
-                                "background-color",
-                                "rgba(128, 128, 128, 0.15)",
-                            ),
-                            ("font-weight", "bold"),
-                            ("text-align", "center"),
-                            ("padding", "10px 8px"),
-                            (
-                                "border-bottom",
-                                "2px solid rgba(128, 128, 128, 0.3)",
-                            ),
-                        ],
-                    },
-                    {
-                        "selector": "td",
-                        "props": [
-                            ("text-align", "center"),
-                            ("vertical-align", "middle"),
-                            ("padding", "8px 6px"),
-                            ("line-height", "1.35"),
-                            (
-                                "border-bottom",
-                                "1px solid rgba(128, 128, 128, 0.15)",
-                            ),
-                        ],
-                    },
-                ]
-            )
+            display_df.style
+            .hide(axis="index")
+            .apply(style_rows, axis=1)
+            .set_table_styles(table_styles)
         )
 
         st.write(styled_df.to_html(escape=False), unsafe_allow_html=True)
