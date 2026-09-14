@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 # --- Configured Locations ---
 STATIONS = {
@@ -224,21 +225,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Responsive CSS for wrapping on mobile screens (<768px)
-st.markdown(
-    """
-    <style>
-    @media (max-width: 768px) {
-        table td:nth-child(1), table th:nth-child(1) {
-            white-space: normal !important;
-            min-width: auto !important;
-        }
-    }
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
 st.title("🌊 Tide Dashboard")
 
 # --- Session State for Date Navigation ---
@@ -318,14 +304,10 @@ with col_map:
             "lon": [station_info["lon"]],
         }
     )
-    st.markdown(
-        "<div style='margin-top: 0px;'></div>", unsafe_allow_html=True
-    )
+    st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
     st.map(map_df, zoom=9, height=195, use_container_width=True)
 
 tab_month, tab_daily = st.tabs(["🗓️ Monthly Table", "📈 Daily Graph"])
-
-import streamlit.components.v1 as components
 
 # --- Monthly Table View ---
 with tab_month:
@@ -463,7 +445,7 @@ with tab_month:
                         ("position", "sticky"),
                         ("top", "0"),
                         ("z-index", "10"),
-                        ("background-color", "rgba(30, 41, 59, 0.95)"),
+                        ("background-color", "#1e293b"),
                         ("color", "#f8fafc"),
                         ("font-weight", "bold"),
                         ("text-align", "center"),
@@ -479,15 +461,6 @@ with tab_month:
                         ("padding", "8px 4px"),
                         ("line-height", "1.35"),
                         ("border-bottom", "1px solid rgba(128, 128, 128, 0.15)"),
-                    ],
-                },
-                {
-                    "selector": "tr:hover td",
-                    "props": [
-                        (
-                            "background-color",
-                            "rgba(128, 128, 128, 0.18) !important",
-                        ),
                     ],
                 },
             ])
@@ -506,7 +479,9 @@ with tab_month:
             col_idx = display_df.columns.get_loc(col) + 1
             header_styles.append({
                 "selector": f"th:nth-child({col_idx})",
-                "props": [("border-right", "2px solid rgba(128, 128, 128, 0.45)")],
+                "props": [
+                    ("border-right", "2px solid rgba(128, 128, 128, 0.45)")
+                ],
             })
         styler.set_table_styles(header_styles, overwrite=False)
 
@@ -518,27 +493,54 @@ with tab_month:
             replacement_str = f'<tr id="today-row"'
             html_table = html_table.replace(target_str, replacement_str)
 
-        # Render Table
-        st.write(html_table, unsafe_allow_html=True)
-
-        # Reliable Scroll Trigger via Component Scripting
+        # Scrolling JS code to execute internally inside component window
+        auto_scroll_js = ""
         if st.session_state.should_scroll_today and not today_idx.empty:
-            components.html(
-                """
-                <script>
+            auto_scroll_js = """
+            <script>
+            window.addEventListener('DOMContentLoaded', function() {
                 setTimeout(function() {
-                    var doc = window.parent.document;
-                    var el = doc.getElementById('today-row');
+                    var el = document.getElementById('today-row');
                     if (el) {
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
-                }, 300);
-                </script>
-                """,
-                height=0,
-                width=0,
-            )
+                }, 100);
+            });
+            </script>
+            """
             st.session_state.should_scroll_today = False
+
+        # Wrapper HTML combining styling, container box, table, and isolated scroll logic
+        component_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <style>
+            body {{
+                margin: 0;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                color: #e2e8f0;
+                background-color: transparent;
+            }}
+            .table-wrapper {{
+                max-height: 550px;
+                overflow-y: auto;
+                border: 1px solid rgba(128, 128, 128, 0.2);
+                border-radius: 8px;
+            }}
+        </style>
+        </head>
+        <body>
+            <div class="table-wrapper">
+                {html_table}
+            </div>
+            {auto_scroll_js}
+        </body>
+        </html>
+        """
+
+        # Render complete component safely without CORS blocks
+        components.html(component_html, height=560, scrolling=False)
 
     else:
         st.error("Unable to load tide data.")
