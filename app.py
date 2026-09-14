@@ -1,6 +1,7 @@
 import datetime
 import math
 import zoneinfo
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import requests
@@ -137,7 +138,7 @@ def fetch_month_hilo(station_id, start_date, end_date):
         f"&station={station_id}&product=predictions&interval=hilo&datum=MLLW"
         f"&units=english&time_zone=lst_ldt&format=json"
     )
-    res = requests.get(url).json()
+    res = requests.get(url, timeout=10).json()
     if "predictions" in res:
         df = pd.DataFrame(res["predictions"])
         df["t"] = pd.to_datetime(df["t"])
@@ -148,30 +149,53 @@ def fetch_month_hilo(station_id, start_date, end_date):
 
 @st.cache_data(ttl=3600)
 def fetch_daily_tide_data(station_id, selected_date):
-    date_str = selected_date.strftime("%Y%m%d")
+    # Buffer range by +/- 1 day to smoothly interpolate curve edges
+    start_buffer = selected_date - datetime.timedelta(days=1)
+    end_buffer = selected_date + datetime.timedelta(days=1)
 
-    # 1. Fetch High-Resolution Continuous Predictions (Works for ALL stations)
+    # 1. Fetch High/Low predictions (Supported by ALL stations)
+    hilo_url = (
+        f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
+        f"begin_date={start_buffer.strftime('%Y%m%d')}&end_date={end_buffer.strftime('%Y%m%d')}"
+        f"&station={station_id}&product=predictions&interval=hilo&datum=MLLW"
+        f"&units=english&time_zone=lst_ldt&format=json"
+    )
+    hilo_res = requests.get(hilo_url, timeout=10).json()
+
     pred_df = pd.DataFrame()
-    try:
-        pred_url = (
-            f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
-            f"begin_date={date_str}&end_date={date_str}"
-            f"&station={station_id}&product=predictions&datum=MLLW"
-            f"&units=english&time_zone=lst_ldt&format=json"
-        )
-        pred_res = requests.get(pred_url, timeout=10).json()
-        
-        # Fallback to 6-minute interval if standard predictions array is missing
-        if "predictions" in pred_res:
-            pred_df = pd.DataFrame(pred_res["predictions"])
-            pred_df["t"] = pd.to_datetime(pred_df["t"])
-            pred_df["v"] = pred_df["v"].astype(float)
-    except Exception as e:
-        st.warning(f"Error fetching predictions: {e}")
+    if "predictions" in hilo_res:
+        h_df = pd.DataFrame(hilo_res["predictions"])
+        h_df["t"] = pd.to_datetime(h_df["t"])
+        h_df["v"] = h_df["v"].astype(float)
 
-    # 2. Fetch Real-Time Observed Water Levels (Only available for primary stations)
+        # Generate smooth 5-minute interpolated curve using cosine rule of 12ths
+        times = []
+        vals = []
+
+        for i in range(len(h_df) - 1):
+            t1, v1 = h_df.iloc[i]["t"], h_df.iloc[i]["v"]
+            t2, v2 = h_df.iloc[i + 1]["t"], h_df.iloc[i + 1]["v"]
+
+            dt_sec = (t2 - t1).total_seconds()
+            num_steps = int(dt_sec / 300)  # 5-min intervals
+
+            for s in range(num_steps):
+                curr_t = t1 + datetime.timedelta(seconds=s * 300)
+                phase = (s / num_steps) * math.pi
+                curr_v = (v1 + v2) / 2 + ((v1 - v2) / 2) * math.cos(phase)
+
+                if (
+                    curr_t.date() == selected_date
+                ):  # Filter down to strictly selected date
+                    times.append(curr_t)
+                    vals.append(curr_v)
+
+        pred_df = pd.DataFrame({"t": times, "v": vals})
+
+    # 2. Fetch Real-Time Observed Water Levels (Primary stations only)
     obs_df = pd.DataFrame()
     try:
+        date_str = selected_date.strftime("%Y%m%d")
         obs_url = (
             f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
             f"begin_date={date_str}&end_date={date_str}"
@@ -184,7 +208,7 @@ def fetch_daily_tide_data(station_id, selected_date):
             obs_df["t"] = pd.to_datetime(obs_df["t"])
             obs_df["v"] = obs_df["v"].astype(float)
     except Exception:
-        pass  # Quietly ignore missing observations on non-sensor stations
+        pass
 
     return pred_df, obs_df
 
@@ -430,7 +454,7 @@ with tab_month:
         st.markdown(custom_css + table_html, unsafe_allow_html=True)
 
     else:
-        st.error("Unable to load NOAA tide data.")
+        st.error("Unable to load tide data.")
 
 # --- Daily Graph View ---
 with tab_daily:
@@ -474,7 +498,9 @@ with tab_daily:
             xaxis_title="Time",
             yaxis_title="Height (ft MLLW)",
             hovermode="x unified",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
             margin=dict(l=10, r=10, t=10, b=10),
             height=320,
         )
