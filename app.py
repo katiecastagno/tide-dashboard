@@ -187,8 +187,8 @@ def reset_to_today():
     st.session_state.selected_year = today_date.year
 
 
-# --- Top Controls ---
-col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+# --- Top Controls (Aligned to Bottom) ---
+col1, col2, col3, col4 = st.columns([2, 1, 1, 1], vertical_alignment="bottom")
 with col1:
     selected_location = st.selectbox(
         "Location",
@@ -209,7 +209,6 @@ with col3:
         key="selected_year",
     )
 with col4:
-    st.write(" ")
     st.button("📅 Today", on_click=reset_to_today, use_container_width=True)
 
 start_date = datetime.date(
@@ -269,7 +268,9 @@ with tab_month:
                 time_str = (
                     tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
                 )
-                height_str = f"({tide_row['v']:.1f} ft)"
+                height_str = (
+                    f"<span class='tide-height'>({tide_row['v']:.1f} ft)</span>"
+                )
 
                 is_daylight = sr_time <= time_obj <= ss_time
 
@@ -322,8 +323,8 @@ with tab_month:
                 row_data["Low 1"] = l1
                 row_data["Low 2"] = l2
 
-            row_data["Sunrise (am)"] = sr_fmt
-            row_data["Sunset (pm)"] = ss_fmt
+            row_data["Rise (AM)"] = sr_fmt
+            row_data["Set (PM)"] = ss_fmt
             row_data["Moon"] = moon_emoji
 
             records.append(row_data)
@@ -359,8 +360,11 @@ with tab_month:
                 border-radius: 8px;
                 overflow: hidden;
             }
-            /* Centering for Table Headers */
+            /* Sticky Header & Centering */
             .custom-tide-table th {
+                position: sticky;
+                top: 0;
+                z-index: 2;
                 background-color: #f0f2f5 !important;
                 color: #1f2328;
                 font-weight: 600;
@@ -375,9 +379,14 @@ with tab_month:
                 text-align: center !important;
                 vertical-align: middle !important;
                 border-bottom: 1px solid #e1e4e8;
-                line-height: 1.35;
+                line-height: 1.3;
             }
-            /* Direct Cell Zebra Striping for High Contrast */
+            /* De-emphasize height value */
+            .tide-height {
+                font-size: 0.82em;
+                opacity: 0.85;
+            }
+            /* Direct Cell Zebra Striping */
             .custom-tide-table tbody tr:nth-child(odd) td {
                 background-color: #ffffff !important;
             }
