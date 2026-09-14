@@ -146,21 +146,37 @@ def fetch_month_hilo(station_id, start_date, end_date):
     return pd.DataFrame()
 
 
-@st.cache_data(ttl=86400)
-def fetch_continuous_tides(station_id, start_date, end_date):
-    url = (
+@st.cache_data(ttl=3600)
+def fetch_daily_tide_data(station_id, selected_date):
+    date_str = selected_date.strftime("%Y%m%d")
+
+    # 1. Fetch Predictions
+    pred_url = (
         f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
-        f"begin_date={start_date.strftime('%Y%m%d')}&end_date={end_date.strftime('%Y%m%d')}"
+        f"begin_date={date_str}&end_date={date_str}"
         f"&station={station_id}&product=predictions&datum=MLLW"
         f"&units=english&time_zone=lst_ldt&format=json"
     )
-    res = requests.get(url).json()
-    if "predictions" in res:
-        df = pd.DataFrame(res["predictions"])
-        df["t"] = pd.to_datetime(df["t"])
-        df["v"] = df["v"].astype(float)
-        return df
-    return pd.DataFrame()
+    pred_res = requests.get(pred_url).json()
+    pred_df = pd.DataFrame(pred_res.get("predictions", []))
+    if not pred_df.empty:
+        pred_df["t"] = pd.to_datetime(pred_df["t"])
+        pred_df["v"] = pred_df["v"].astype(float)
+
+    # 2. Fetch Observed Water Levels
+    obs_url = (
+        f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
+        f"begin_date={date_str}&end_date={date_str}"
+        f"&station={station_id}&product=water_level&datum=MLLW"
+        f"&units=english&time_zone=lst_ldt&format=json"
+    )
+    obs_res = requests.get(obs_url).json()
+    obs_df = pd.DataFrame(obs_res.get("data", []))
+    if not obs_df.empty:
+        obs_df["t"] = pd.to_datetime(obs_df["t"])
+        obs_df["v"] = obs_df["v"].astype(float)
+
+    return pred_df, obs_df
 
 
 # --- Page Config ---
@@ -332,7 +348,7 @@ with tab_month:
 
         month_df = pd.DataFrame(records)
 
-        # Single HTML Table Construction
+        # HTML Table Construction
         headers = [col for col in month_df.columns if col != "is_today"]
         table_html = "<table class='custom-tide-table'><thead><tr>"
         for h in headers:
@@ -360,7 +376,6 @@ with tab_month:
                 border-radius: 8px;
                 overflow: hidden;
             }
-            /* Sticky Header & Centering */
             .custom-tide-table th {
                 position: sticky;
                 top: 0;
@@ -373,7 +388,6 @@ with tab_month:
                 vertical-align: middle !important;
                 border-bottom: 2px solid #c0c7de;
             }
-            /* Centering for Data Cells */
             .custom-tide-table td {
                 padding: 8px 6px;
                 text-align: center !important;
@@ -381,23 +395,19 @@ with tab_month:
                 border-bottom: 1px solid #e1e4e8;
                 line-height: 1.3;
             }
-            /* De-emphasize height value */
             .tide-height {
                 font-size: 0.82em;
                 opacity: 0.85;
             }
-            /* Direct Cell Zebra Striping */
             .custom-tide-table tbody tr:nth-child(odd) td {
                 background-color: #ffffff !important;
             }
             .custom-tide-table tbody tr:nth-child(even) td {
                 background-color: #f1f5f9 !important;
             }
-            /* Row Hover Effect */
             .custom-tide-table tbody tr:hover td {
                 background-color: #e0f2fe !important;
             }
-            /* Distinct 'Today' Row Highlight */
             .custom-tide-table tbody tr.today-row td {
                 background-color: #bae6fd !important;
                 font-weight: 600;
@@ -422,28 +432,42 @@ with tab_daily:
         format="MM/DD/YYYY",
     )
 
-    c_df = fetch_continuous_tides(
-        station_info["id"],
-        selected_day,
-        selected_day + datetime.timedelta(days=1),
-    )
+    pred_df, obs_df = fetch_daily_tide_data(station_info["id"], selected_day)
 
-    if not c_df.empty:
+    if not pred_df.empty:
         fig = go.Figure()
+
+        # Predicted Tide Curve
         fig.add_trace(
             go.Scatter(
-                x=c_df["t"],
-                y=c_df["v"],
+                x=pred_df["t"],
+                y=pred_df["v"],
                 mode="lines",
-                name="Tide (ft)",
-                line=dict(color="#0077b6", width=3),
+                name="Predicted",
+                line=dict(color="#0077b6", width=2.5),
             )
         )
+
+        # Observed Tide Curve
+        if not obs_df.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=obs_df["t"],
+                    y=obs_df["v"],
+                    mode="lines",
+                    name="Observed",
+                    line=dict(color="#d97706", width=2, dash="dot"),
+                )
+            )
+
         fig.update_layout(
             xaxis_title="Time",
-            yaxis_title="Height (ft)",
+            yaxis_title="Height (ft MLLW)",
             hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             margin=dict(l=10, r=10, t=10, b=10),
-            height=300,
+            height=320,
         )
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.error("Unable to load tide data for this date.")
