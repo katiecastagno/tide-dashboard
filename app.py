@@ -508,25 +508,28 @@ with tab_month:
         html_table = styler.to_html(escape=False)
         today_idx = month_df[month_df["is_today"]].index
 
-        # Add target id and focus trigger to force view alignment on #today-row
+        # Set target ID and trigger execution using inline SVG script parsing
         if not today_idx.empty:
             target_str = f'<tr id="row{today_idx[0]}"'
-            replacement_str = f'<tr id="today-row" tabindex="-1"'
+            replacement_str = f'<tr id="today-row"'
             html_table = html_table.replace(target_str, replacement_str)
 
             if st.session_state.should_scroll_today:
-                focus_script = """
-                <script>
-                    setTimeout(function() {
-                        var row = document.getElementById('today-row');
-                        if (row) {
-                            row.focus();
-                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }, 50);
-                </script>
+                svg_trigger = """
+                <svg width="0" height="0" style="display:none;">
+                    <script type="text/javascript">
+                        <![CDATA[
+                        setTimeout(function() {
+                            var el = document.getElementById('today-row');
+                            if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 100);
+                        ]]>
+                    </script>
+                </svg>
                 """
-                html_table += focus_script
+                html_table += svg_trigger
                 st.session_state.should_scroll_today = False
 
         st.write(html_table, unsafe_allow_html=True)
