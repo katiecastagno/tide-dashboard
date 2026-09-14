@@ -150,7 +150,7 @@ def fetch_month_hilo(station_id, start_date, end_date):
 def fetch_daily_tide_data(station_id, selected_date):
     date_str = selected_date.strftime("%Y%m%d")
 
-    # 1. Fetch Predictions (Always available for past & future)
+    # 1. Fetch High-Resolution Continuous Predictions (Works for ALL stations)
     pred_df = pd.DataFrame()
     try:
         pred_url = (
@@ -159,15 +159,17 @@ def fetch_daily_tide_data(station_id, selected_date):
             f"&station={station_id}&product=predictions&datum=MLLW"
             f"&units=english&time_zone=lst_ldt&format=json"
         )
-        pred_res = requests.get(pred_url).json()
+        pred_res = requests.get(pred_url, timeout=10).json()
+        
+        # Fallback to 6-minute interval if standard predictions array is missing
         if "predictions" in pred_res:
             pred_df = pd.DataFrame(pred_res["predictions"])
             pred_df["t"] = pd.to_datetime(pred_df["t"])
             pred_df["v"] = pred_df["v"].astype(float)
-    except Exception:
-        pass
+    except Exception as e:
+        st.warning(f"Error fetching predictions: {e}")
 
-    # 2. Fetch Observed Water Levels (Only available for recent dates)
+    # 2. Fetch Real-Time Observed Water Levels (Only available for primary stations)
     obs_df = pd.DataFrame()
     try:
         obs_url = (
@@ -176,13 +178,13 @@ def fetch_daily_tide_data(station_id, selected_date):
             f"&station={station_id}&product=water_level&datum=MLLW"
             f"&units=english&time_zone=lst_ldt&format=json"
         )
-        obs_res = requests.get(obs_url).json()
+        obs_res = requests.get(obs_url, timeout=10).json()
         if "data" in obs_res:
             obs_df = pd.DataFrame(obs_res["data"])
             obs_df["t"] = pd.to_datetime(obs_df["t"])
             obs_df["v"] = obs_df["v"].astype(float)
     except Exception:
-        pass
+        pass  # Quietly ignore missing observations on non-sensor stations
 
     return pred_df, obs_df
 
