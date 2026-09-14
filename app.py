@@ -279,7 +279,7 @@ else:
 station_info = STATIONS[selected_location]
 
 # --- Display Filters & Station Map Split ---
-col_settings, col_map = st.columns([3, 2])
+col_settings, col_map = st.columns([3, 2], gap="medium")
 
 with col_settings:
     with st.expander("⚙️ View Options & Highlights", expanded=True):
@@ -293,13 +293,18 @@ with col_settings:
         highlight_daylight_lows = st.checkbox("☀️ Highlight Daylight Lows")
 
 with col_map:
+    # Use a container styled with CSS to match expander borders and align cleanly
     map_df = pd.DataFrame(
         {
             "lat": [station_info["lat"]],
             "lon": [station_info["lon"]],
         }
     )
-    st.map(map_df, zoom=9, height=180, use_container_width=True)
+    # Adding a slight top margin offset matches Streamlit's expander header alignment
+    st.markdown(
+        "<div style='margin-top: 0px;'></div>", unsafe_allow_html=True
+    )
+    st.map(map_df, zoom=9, height=195, use_container_width=True)
 
 tab_month, tab_daily = st.tabs(["🗓️ Monthly Table", "📈 Daily Graph"])
 
