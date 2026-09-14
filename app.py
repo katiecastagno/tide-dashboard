@@ -224,10 +224,20 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Responsive CSS to allow date column wrapping on mobile screens (<768px)
+# Responsive CSS for wrapping on mobile screens (<768px) + smooth CSS scrolling rules
 st.markdown(
     """
     <style>
+    html {
+        scroll-behavior: smooth;
+    }
+    .table-scroll-container {
+        max-height: 520px;
+        overflow-y: auto;
+        scroll-behavior: smooth;
+        border-radius: 8px;
+        border: 1px solid rgba(128, 128, 128, 0.25);
+    }
     @media (max-width: 768px) {
         table td:nth-child(1), table th:nth-child(1) {
             white-space: normal !important;
@@ -452,14 +462,16 @@ with tab_month:
                         ("table-layout", "fixed"),
                         ("border-collapse", "separate"),
                         ("border-spacing", "0"),
-                        ("border-radius", "8px"),
-                        ("border", "1px solid rgba(128, 128, 128, 0.25)"),
                     ],
                 },
                 {
                     "selector": "th",
                     "props": [
-                        ("background-color", "rgba(128, 128, 128, 0.15)"),
+                        ("position", "sticky"),
+                        ("top", "0"),
+                        ("z-index", "10"),
+                        ("background-color", "rgba(30, 41, 59, 0.95)"),
+                        ("color", "#f8fafc"),
                         ("font-weight", "bold"),
                         ("text-align", "center"),
                         ("padding", "10px 4px"),
@@ -508,31 +520,25 @@ with tab_month:
         html_table = styler.to_html(escape=False)
         today_idx = month_df[month_df["is_today"]].index
 
-        # Set target ID and trigger execution using inline SVG script parsing
+        # Set target ID for CSS target anchoring
         if not today_idx.empty:
             target_str = f'<tr id="row{today_idx[0]}"'
             replacement_str = f'<tr id="today-row"'
             html_table = html_table.replace(target_str, replacement_str)
 
-            if st.session_state.should_scroll_today:
-                svg_trigger = """
-                <svg width="0" height="0" style="display:none;">
-                    <script type="text/javascript">
-                        <![CDATA[
-                        setTimeout(function() {
-                            var el = document.getElementById('today-row');
-                            if (el) {
-                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                        }, 100);
-                        ]]>
-                    </script>
-                </svg>
-                """
-                html_table += svg_trigger
-                st.session_state.should_scroll_today = False
+        # Wrap in scrollable CSS container
+        wrapped_html = f"""
+        <div class="table-scroll-container">
+            {html_table}
+        </div>
+        """
 
-        st.write(html_table, unsafe_allow_html=True)
+        # Auto-jump via anchor hash on button trigger
+        if st.session_state.should_scroll_today and not today_idx.empty:
+            wrapped_html += '<meta http-equiv="refresh" content="0;url=#today-row" />'
+            st.session_state.should_scroll_today = False
+
+        st.write(wrapped_html, unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
