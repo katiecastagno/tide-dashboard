@@ -427,7 +427,6 @@ with tab_month:
                 bg = "background-color: transparent;"
             return [bg] * len(row)
 
-        # Identify separator columns dynamically based on active view mode
         divider_cols = ["Date"]
         if "High 2" in display_df.columns:
             divider_cols.append("High 2")
@@ -442,7 +441,6 @@ with tab_month:
         if "Set (PM)" in display_df.columns:
             divider_cols.append("Set (PM)")
 
-        # Create base Styler object
         styler = (
             display_df.style.hide(axis="index")
             .apply(style_rows, axis=1)
@@ -507,30 +505,30 @@ with tab_month:
             })
         styler.set_table_styles(header_styles, overwrite=False)
 
-        # Convert to HTML string and inject id="today-row" into today's row element
         html_table = styler.to_html(escape=False)
         today_idx = month_df[month_df["is_today"]].index
+        
+        # Inject id="today-row" and direct in-frame scroll script into the HTML output
         if not today_idx.empty:
             target_str = f'<tr id="row{today_idx[0]}"'
             replacement_str = f'<tr id="today-row"'
             html_table = html_table.replace(target_str, replacement_str)
 
-        st.write(html_table, unsafe_allow_html=True)
-
-        # Execute smooth scrolling via JS if "Today" was clicked
-        if st.session_state.should_scroll_today:
-            st.markdown(
-                """
+            if st.session_state.should_scroll_today:
+                scroll_script = """
                 <script>
-                    var targetRow = window.parent.document.getElementById('today-row');
-                    if (targetRow) {
-                        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
+                    setTimeout(function() {
+                        var el = document.getElementById('today-row');
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 100);
                 </script>
-            """,
-                unsafe_allow_html=True,
-            )
-            st.session_state.should_scroll_today = False
+                """
+                html_table += scroll_script
+                st.session_state.should_scroll_today = False
+
+        st.write(html_table, unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
