@@ -281,9 +281,10 @@ with tab_month:
                     and highlight_daylight_lows
                 )
 
+                # Line break (<br>) forces height onto a separate line below the time
                 if should_highlight:
-                    return f"<mark style='background-color: #fef08a; color: #854d0e; padding: 2px 4px; border-radius: 4px;'><b>{time_str}</b> {height_str}</mark>"
-                return f"<b>{time_str}</b> {height_str}"
+                    return f"<mark style='background-color: #fef08a; color: #854d0e; padding: 2px 4px; border-radius: 4px;'><b>{time_str}</b><br>{height_str}</mark>"
+                return f"<b>{time_str}</b><br>{height_str}"
 
             h1 = (
                 format_tide(high_tides.iloc[0], is_high_tide=True)
@@ -306,7 +307,6 @@ with tab_month:
                 else "-"
             )
 
-            # Strip am/pm for solar times since the header specifies (am) / (pm)
             sr_fmt = sr_time.strftime("%I:%M").lstrip("0")
             ss_fmt = ss_time.strftime("%I:%M").lstrip("0")
 
@@ -332,7 +332,7 @@ with tab_month:
 
         month_df = pd.DataFrame(records)
 
-        # Build clean raw HTML directly
+        # Single HTML Table Construction
         headers = [col for col in month_df.columns if col != "is_today"]
         table_html = "<table class='custom-tide-table'><thead><tr>"
         for h in headers:
@@ -340,7 +340,6 @@ with tab_month:
         table_html += "</tr></thead><tbody>"
 
         for idx, row in month_df.iterrows():
-            # Add a distinct highlight class for today's date
             row_class = "today-row" if row["is_today"] else ""
             table_html += f"<tr class='{row_class}'>"
             for col in headers:
@@ -357,47 +356,48 @@ with tab_month:
                 border-spacing: 0;
                 margin-top: 12px;
                 font-size: 0.88rem;
-                font-family: inherit;
-                border: 1px solid rgba(128, 128, 128, 0.2);
+                border: 1px solid #d0d7de;
                 border-radius: 8px;
                 overflow: hidden;
             }
             .custom-tide-table th {
-                background-color: rgba(128, 128, 128, 0.08);
+                background-color: #f6f8fa;
+                color: #1f2328;
                 font-weight: 600;
                 padding: 10px 12px;
                 text-align: left;
-                border-bottom: 2px solid rgba(128, 128, 128, 0.2);
+                border-bottom: 2px solid #d0d7de;
+                vertical-align: middle;
             }
             .custom-tide-table td {
                 padding: 8px 12px;
                 text-align: left;
-                border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+                border-bottom: 1px solid #e1e4e8;
+                vertical-align: top;
+                line-height: 1.35;
             }
-            /* Zebra Striping */
-            .custom-tide-table tbody tr:nth-child(even) {
-                background-color: rgba(128, 128, 128, 0.03);
-            }
+            /* Explicit Light Zebra Striping */
             .custom-tide-table tbody tr:nth-child(odd) {
-                background-color: transparent;
+                background-color: #ffffff;
             }
-            /* Row Hover Effect */
+            .custom-tide-table tbody tr:nth-child(even) {
+                background-color: #f8f9fa;
+            }
+            /* Row Hover */
             .custom-tide-table tbody tr:hover {
-                background-color: rgba(0, 119, 182, 0.08) !important;
+                background-color: #eef6fc !important;
             }
             /* Today Highlight */
             .custom-tide-table tbody tr.today-row {
-                background-color: rgba(0, 119, 182, 0.2) !important;
-                font-weight: 500;
+                background-color: #e0f2fe !important;
+                font-weight: 600;
             }
             .custom-tide-table tbody tr.today-row td {
-                border-top: 1px solid rgba(0, 119, 182, 0.4);
-                border-bottom: 1px solid rgba(0, 119, 182, 0.4);
+                border-top: 1px solid #0284c7;
+                border-bottom: 1px solid #0284c7;
             }
         </style>
         """
-
-        st.markdown(custom_css + table_html, unsafe_allow_html=True)
 
         st.markdown(custom_css + table_html, unsafe_allow_html=True)
 
