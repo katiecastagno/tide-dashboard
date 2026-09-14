@@ -118,7 +118,7 @@ def get_moon_phase_emoji(date_obj):
     elif phase_age < 9:
         return "🌓"
     elif phase_age < 14:
-        return "🌔"
+        return "m"
     elif phase_age < 16:
         return "🌕"
     elif phase_age < 22:
@@ -312,9 +312,7 @@ with tab_month:
                 time_str = (
                     tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
                 )
-                height_str = (
-                    f"<span class='tide-height'>({tide_row['v']:.1f} ft)</span>"
-                )
+                height_str = f"({tide_row['v']:.1f} ft)"
 
                 is_daylight = sr_time <= time_obj <= ss_time
 
@@ -327,8 +325,8 @@ with tab_month:
                 )
 
                 if should_highlight:
-                    return f"<mark style='background-color: #fef08a; color: #854d0e; padding: 2px 4px; border-radius: 4px; display: inline-block;'><b>{time_str}</b><br>{height_str}</mark>"
-                return f"<b>{time_str}</b><br>{height_str}"
+                    return f"☀️ {time_str} {height_str}"
+                return f"{time_str} {height_str}"
 
             h1 = (
                 format_tide(high_tides.iloc[0], is_high_tide=True)
@@ -375,115 +373,44 @@ with tab_month:
             current_day += datetime.timedelta(days=1)
 
         month_df = pd.DataFrame(records)
+        is_today_mask = month_df["is_today"].values
+        display_df = month_df.drop(columns=["is_today"])
 
-        headers = [col for col in month_df.columns if col != "is_today"]
+        # Row styling function for alternating zebra stripes + highlight today
+        def style_rows(df):
+            styles = pd.DataFrame("", index=df.index, columns=df.columns)
+            for i in range(len(df)):
+                if is_today_mask[i]:
+                    styles.iloc[i] = "background-color: #bae6fd; font-weight: bold;"
+                elif i % 2 == 1:
+                    styles.iloc[i] = "background-color: #f8fafc;"
+                else:
+                    styles.iloc[i] = "background-color: #ffffff;"
+            return styles
 
-        def get_header_class(header_name):
-            classes = []
-            if header_name == "Date":
-                classes.append("divider-col")
-            elif header_name == "High 2" and "Low 1" in headers:
-                classes.append("divider-col")
-            elif header_name in ["High 2", "Low 2"]:
-                classes.append("divider-col")
-            elif header_name == "Set (PM)":
-                classes.append("divider-col")
-            return " ".join(classes)
+        styled_df = display_df.style.apply(style_rows, axis=None)
 
-        # Inject CSS targeting Streamlit's container DOM directly
-        style_css = """
-        <style>
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table {
-                width: 100% !important;
-                border-collapse: separate !important;
-                border-spacing: 0 !important;
-                margin-top: 12px !important;
-                font-size: 0.88rem !important;
-                border: 1px solid #cbd5e1 !important;
-                border-radius: 8px !important;
-                overflow: hidden !important;
-            }
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table th {
-                position: sticky !important;
-                top: 0 !important;
-                z-index: 2 !important;
-                background-color: #f0f2f5 !important;
-                color: #1f2328 !important;
-                font-weight: 600 !important;
-                padding: 10px 8px !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-                border-bottom: 2px solid #cbd5e1 !important;
-            }
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table td {
-                padding: 8px 6px !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-                border-bottom: 1px solid #e2e8f0 !important;
-                line-height: 1.3 !important;
-            }
-            
-            /* Zebra Striping Forced via Cell Overrides */
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr.row-even td {
-                background-color: #ffffff !important;
-            }
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr.row-odd td {
-                background-color: #f1f5f9 !important;
-            }
-            
-            /* Hover Override */
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr:hover td {
-                background-color: #e0f2fe !important;
-            }
-            
-            /* Today Row Override */
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr.today-row td {
-                background-color: #bae6fd !important;
-                font-weight: 600 !important;
-                border-top: 1.5px solid #0284c7 !important;
-                border-bottom: 1.5px solid #0284c7 !important;
-            }
-            
-            /* Divider Lines */
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table th.divider-col, 
-            div[data-testid="stMarkdownContainer"] table.custom-tide-table td.divider-col {
-                border-right: 2px solid #94a3b8 !important;
-            }
-            .tide-height {
-                font-size: 0.82em;
-                opacity: 0.85;
-            }
-        </style>
-        """
+        # CSS to handle hover state and border dividers natively
+        st.markdown(
+            """
+            <style>
+                div[data-testid="stTable"] table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                }
+                div[data-testid="stTable"] tr:hover td {
+                    background-color: #e0f2fe !important;
+                }
+                div[data-testid="stTable"] th, div[data-testid="stTable"] td {
+                    text-align: center !important;
+                    padding: 8px 6px !important;
+                }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        table_html = "<table class='custom-tide-table'>"
-        table_html += "<thead><tr>"
-        for h in headers:
-            cls = get_header_class(h)
-            cls_attr = f" class='{cls}'" if cls else ""
-            table_html += f"<th{cls_attr}>{h}</th>"
-        table_html += "</tr></thead><tbody>"
-
-        for idx, row in month_df.iterrows():
-            classes = []
-            if row["is_today"]:
-                classes.append("today-row")
-            else:
-                classes.append("row-even" if idx % 2 == 0 else "row-odd")
-
-            tr_class_attr = f" class='{' '.join(classes)}'" if classes else ""
-            table_html += f"<tr{tr_class_attr}>"
-            
-            for col in headers:
-                cls = get_header_class(col)
-                cls_attr = f" class='{cls}'" if cls else ""
-                table_html += f"<td{cls_attr}>{row[col]}</td>"
-            table_html += "</tr>"
-
-        table_html += "</tbody></table>"
-
-        # Use st.html for raw HTML injection bypassing Markdown filters
-        st.html(style_css + table_html)
+        st.table(styled_df)
 
     else:
         st.error("Unable to load tide data.")
