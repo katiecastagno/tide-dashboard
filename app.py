@@ -241,18 +241,21 @@ st.markdown(
 
 st.title("🌊 Tide Dashboard")
 
-# --- Session State for Date Navigation ---
+# --- Session State for Date Navigation & Auto-Scroll ---
 today_date = datetime.date.today()
 
 if "selected_month" not in st.session_state:
     st.session_state.selected_month = today_date.month
 if "selected_year" not in st.session_state:
     st.session_state.selected_year = today_date.year
+if "should_scroll_today" not in st.session_state:
+    st.session_state.should_scroll_today = False
 
 
 def reset_to_today():
     st.session_state.selected_month = today_date.month
     st.session_state.selected_year = today_date.year
+    st.session_state.should_scroll_today = True
 
 
 # --- Top Controls ---
@@ -487,17 +490,14 @@ with tab_month:
             ])
         )
 
-        # Ensure Date column does not wrap and has comfortable minimum width on desktop
         styler.set_properties(
             subset=["Date"],
             **{"white-space": "nowrap", "min-width": "105px"},
         )
 
-        # Apply inline right borders directly to data cells for divider columns
         border_style = {"border-right": "2px solid rgba(128, 128, 128, 0.45)"}
         styler.set_properties(subset=divider_cols, **border_style)
 
-        # Apply right borders to the corresponding header cells (th)
         header_styles = []
         for col in divider_cols:
             col_idx = display_df.columns.get_loc(col) + 1
@@ -507,7 +507,30 @@ with tab_month:
             })
         styler.set_table_styles(header_styles, overwrite=False)
 
-        st.write(styler.to_html(escape=False), unsafe_allow_html=True)
+        # Convert to HTML string and inject id="today-row" into today's row element
+        html_table = styler.to_html(escape=False)
+        today_idx = month_df[month_df["is_today"]].index
+        if not today_idx.empty:
+            target_str = f'<tr id="row{today_idx[0]}"'
+            replacement_str = f'<tr id="today-row"'
+            html_table = html_table.replace(target_str, replacement_str)
+
+        st.write(html_table, unsafe_allow_html=True)
+
+        # Execute smooth scrolling via JS if "Today" was clicked
+        if st.session_state.should_scroll_today:
+            st.markdown(
+                """
+                <script>
+                    var targetRow = window.parent.document.getElementById('today-row');
+                    if (targetRow) {
+                        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                </script>
+            """,
+                unsafe_allow_html=True,
+            )
+            st.session_state.should_scroll_today = False
 
     else:
         st.error("Unable to load tide data.")
@@ -529,7 +552,6 @@ with tab_daily:
     if not pred_df.empty:
         fig = go.Figure()
 
-        # Predicted Tide Curve
         fig.add_trace(
             go.Scatter(
                 x=pred_df["t"],
@@ -540,7 +562,6 @@ with tab_daily:
             )
         )
 
-        # Observed Tide Curve
         if not obs_df.empty:
             fig.add_trace(
                 go.Scatter(
