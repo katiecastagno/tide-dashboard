@@ -6,7 +6,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --- Configured Locations ---
 STATIONS = {
@@ -391,102 +390,95 @@ with tab_month:
                 classes.append("divider-col")
             return " ".join(classes)
 
-        # Isolated Component HTML with strict CSS
-        component_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
+        # Build custom styling without iframe wrapper
+        style_css = """
         <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                background-color: transparent;
-            }}
-            .custom-tide-table {{
-                width: 100%;
-                border-collapse: separate;
-                border-spacing: 0;
-                font-size: 0.88rem;
-                border: 1px solid #cbd5e1;
-                border-radius: 8px;
-                overflow: hidden;
-            }}
-            .custom-tide-table th {{
-                position: sticky;
-                top: 0;
-                z-index: 2;
-                background-color: #f0f2f5;
-                color: #1f2328;
-                font-weight: 600;
-                padding: 10px 8px;
-                text-align: center;
-                vertical-align: middle;
-                border-bottom: 2px solid #cbd5e1;
-            }}
-            .custom-tide-table td {{
-                padding: 8px 6px;
-                text-align: center;
-                vertical-align: middle;
-                border-bottom: 1px solid #e2e8f0;
-                line-height: 1.3;
-            }}
-            /* Native Zebra Striping */
-            .custom-tide-table tbody tr:nth-child(odd) td {{
-                background-color: #ffffff;
-            }}
-            .custom-tide-table tbody tr:nth-child(even) td {{
-                background-color: #f8fafc;
-            }}
-            /* Hover State */
-            .custom-tide-table tbody tr:hover td {{
+            .stApp table.custom-tide-table {
+                width: 100% !important;
+                border-collapse: separate !important;
+                border-spacing: 0 !important;
+                margin-top: 12px !important;
+                font-size: 0.88rem !important;
+                border: 1px solid #cbd5e1 !important;
+                border-radius: 8px !important;
+                overflow: hidden !important;
+            }
+            .stApp table.custom-tide-table th {
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 2 !important;
+                background-color: #f0f2f5 !important;
+                color: #1f2328 !important;
+                font-weight: 600 !important;
+                padding: 10px 8px !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+                border-bottom: 2px solid #cbd5e1 !important;
+            }
+            .stApp table.custom-tide-table td {
+                padding: 8px 6px !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                line-height: 1.3 !important;
+            }
+            /* Zebra Striping Forced Overrides */
+            .stApp table.custom-tide-table tbody tr.row-even td {
+                background-color: #ffffff !important;
+            }
+            .stApp table.custom-tide-table tbody tr.row-odd td {
+                background-color: #f8fafc !important;
+            }
+            /* Hover Override */
+            .stApp table.custom-tide-table tbody tr:hover td {
                 background-color: #e0f2fe !important;
-            }}
-            /* Today Highlight Row */
-            .custom-tide-table tbody tr.today-row td {{
+            }
+            /* Today Row Override */
+            .stApp table.custom-tide-table tbody tr.today-row td {
                 background-color: #bae6fd !important;
-                font-weight: 600;
-                border-top: 1.5px solid #0284c7;
-                border-bottom: 1.5px solid #0284c7;
-            }}
-            /* Darker Section Divider Line */
-            .custom-tide-table th.divider-col, 
-            .custom-tide-table td.divider-col {{
+                font-weight: 600 !important;
+                border-top: 1.5px solid #0284c7 !important;
+                border-bottom: 1.5px solid #0284c7 !important;
+            }
+            /* Divider Lines */
+            .stApp table.custom-tide-table th.divider-col, 
+            .stApp table.custom-tide-table td.divider-col {
                 border-right: 2px solid #94a3b8 !important;
-            }}
-            .tide-height {{
+            }
+            .tide-height {
                 font-size: 0.82em;
                 opacity: 0.85;
-            }}
+            }
         </style>
-        </head>
-        <body>
-            <table class="custom-tide-table">
-                <thead>
-                    <tr>
         """
 
+        table_html = "<table class='custom-tide-table'>"
+        table_html += "<thead><tr>"
         for h in headers:
             cls = get_header_class(h)
-            cls_attr = f' class="{cls}"' if cls else ""
-            component_html += f"<th{cls_attr}>{h}</th>"
-
-        component_html += "</tr></thead><tbody>"
+            cls_attr = f" class='{cls}'" if cls else ""
+            table_html += f"<th{cls_attr}>{h}</th>"
+        table_html += "</tr></thead><tbody>"
 
         for idx, row in month_df.iterrows():
-            row_class = "today-row" if row["is_today"] else ""
-            component_html += f'<tr class="{row_class}">'
+            classes = []
+            if row["is_today"]:
+                classes.append("today-row")
+            else:
+                classes.append("row-even" if idx % 2 == 0 else "row-odd")
+
+            tr_class_attr = f" class='{' '.join(classes)}'" if classes else ""
+            table_html += f"<tr{tr_class_attr}>"
+            
             for col in headers:
                 cls = get_header_class(col)
-                cls_attr = f' class="{cls}"' if cls else ""
-                component_html += f"<td{cls_attr}>{row[col]}</td>"
-            component_html += "</tr>"
+                cls_attr = f" class='{cls}'" if cls else ""
+                table_html += f"<td{cls_attr}>{row[col]}</td>"
+            table_html += "</tr>"
 
-        component_html += "</tbody></table></body></html>"
+        table_html += "</tbody></table>"
 
-        # Calculate dynamic iframe height based on row count
-        iframe_height = 50 + (len(month_df) * 48)
-        components.html(component_html, height=iframe_height, scrolling=True)
+        st.markdown(style_css + table_html, unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
