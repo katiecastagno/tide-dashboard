@@ -387,9 +387,10 @@ with tab_month:
             return ""
 
         # Global CSS block targeting native markdown table elements directly
+        # Force high specificity overrides directly onto td elements
         table_style = """
         <style>
-            .tide-table-wrapper table {
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper table {
                 width: 100% !important;
                 border-collapse: separate !important;
                 border-spacing: 0 !important;
@@ -398,7 +399,7 @@ with tab_month:
                 border: 1px solid #cbd5e1 !important;
                 border-radius: 8px !important;
             }
-            .tide-table-wrapper th {
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper th {
                 background-color: #f1f5f9 !important;
                 color: #0f172a !important;
                 font-weight: 700 !important;
@@ -407,7 +408,7 @@ with tab_month:
                 vertical-align: middle !important;
                 border-bottom: 2px solid #94a3b8 !important;
             }
-            .tide-table-wrapper td {
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper td {
                 padding: 8px 6px !important;
                 text-align: center !important;
                 vertical-align: middle !important;
@@ -415,21 +416,21 @@ with tab_month:
                 line-height: 1.35 !important;
             }
             
-            /* Zebra striping - explicitly set row backgrounds */
-            .tide-table-wrapper tr:nth-child(even) td {
-                background-color: #f8fafc !important;
-            }
-            .tide-table-wrapper tr:nth-child(odd) td {
+            /* Zebra Striping: Target TD cells in alternating TR rows */
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr:nth-child(odd) td {
                 background-color: #ffffff !important;
             }
-            
-            /* Hover state */
-            .tide-table-wrapper tr:hover td {
-                background-color: #e0f2fe !important;
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr:nth-child(even) td {
+                background-color: #f8fafc !important; /* Soft Slate/Gray Zebra Tint */
             }
             
-            /* Today Row Highlight */
-            .tide-table-wrapper tr.today-row td {
+            /* Hover state override on cells */
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr:hover td {
+                background-color: #e0f2fe !important; /* Soft Blue Hover */
+            }
+            
+            /* Today Row Highlight override on cells */
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr.today-row td {
                 background-color: #bae6fd !important;
                 font-weight: 600 !important;
                 border-top: 2px solid #0284c7 !important;
@@ -437,8 +438,8 @@ with tab_month:
             }
             
             /* Vertical Divider Columns */
-            .tide-table-wrapper th.divider-col, 
-            .tide-table-wrapper td.divider-col {
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper th.divider-col, 
+            div[data-testid="stMarkdownContainer"] .tide-table-wrapper td.divider-col {
                 border-right: 2px solid #94a3b8 !important;
             }
         </style>
