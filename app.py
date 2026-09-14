@@ -98,13 +98,11 @@ def get_sun_times_dt(date_obj, lat, lon, tz_name="America/New_York"):
 def get_moon_phase_emoji(date_obj, tz_name="America/New_York"):
     """Calculates accurate moon phase relative to local noon in the station's timezone."""
     tz = zoneinfo.ZoneInfo(tz_name)
-    # Evaluate moon phase at local noon to reflect the primary day state
     local_dt = datetime.datetime(
         date_obj.year, date_obj.month, date_obj.day, 12, 0, 0, tzinfo=tz
     )
     utc_dt = local_dt.astimezone(datetime.timezone.utc)
 
-    # Astronomical Julian Date calculation from UTC
     y = utc_dt.year
     m = utc_dt.month
     d = utc_dt.day + (utc_dt.hour + utc_dt.minute / 60.0) / 24.0
@@ -115,30 +113,29 @@ def get_moon_phase_emoji(date_obj, tz_name="America/New_York"):
     b = 2 - a + math.floor(a / 4)
     jd = math.floor(365.25 * (y + 4716)) + math.floor(30.6001 * (m + 1)) + d + b - 1524.5
 
-    # Synodic month cycle calculation (~29.530588 days relative to reference New Moon JD 2451549.5)
     days_since_new = jd - 2451549.5
     new_moons = days_since_new / 29.53058867
     cycle_fraction = new_moons - math.floor(new_moons)
     phase_age = cycle_fraction * 29.53058867
 
     if phase_age < 1.84566:
-        return "🌑"  # New Moon
+        return "🌑"
     elif phase_age < 5.53699:
-        return "🌒"  # Waxing Crescent
+        return "🌒"
     elif phase_age < 9.22831:
-        return "🌓"  # First Quarter
+        return "🌓"
     elif phase_age < 12.91963:
-        return "🌔"  # Waxing Gibbous
+        return "🌔"
     elif phase_age < 16.61096:
-        return "🌕"  # Full Moon
+        return "🌕"
     elif phase_age < 20.30228:
-        return "🌖"  # Waning Gibbous
+        return "🌖"
     elif phase_age < 23.99361:
-        return "🌗"  # Last Quarter
+        return "🌗"
     elif phase_age < 27.68493:
-        return "🌘"  # Waning Crescent
+        return "🌘"
     else:
-        return "🌑"  # New Moon
+        return "🌑"
 
 
 # --- API Functions ---
@@ -281,19 +278,28 @@ else:
 
 station_info = STATIONS[selected_location]
 
-# --- Display Filters ---
-with st.expander("⚙️ View Options & Highlights", expanded=True):
-    tide_view = st.radio(
-        "Tide View Mode",
-        ["All Tides", "High Tides Only", "Low Tides Only"],
-        horizontal=True,
-    )
+# --- Display Filters & Station Map Split ---
+col_settings, col_map = st.columns([3, 2])
 
-    col_h1, col_h2 = st.columns(2)
-    with col_h1:
+with col_settings:
+    with st.expander("⚙️ View Options & Highlights", expanded=True):
+        tide_view = st.radio(
+            "Tide View Mode",
+            ["All Tides", "High Tides Only", "Low Tides Only"],
+            horizontal=True,
+        )
+
         highlight_daylight_highs = st.checkbox("☀️ Highlight Daylight Highs")
-    with col_h2:
         highlight_daylight_lows = st.checkbox("☀️ Highlight Daylight Lows")
+
+with col_map:
+    map_df = pd.DataFrame(
+        {
+            "lat": [station_info["lat"]],
+            "lon": [station_info["lon"]],
+        }
+    )
+    st.map(map_df, zoom=9, height=180, use_container_width=True)
 
 tab_month, tab_daily = st.tabs(["🗓️ Monthly Table", "📈 Daily Graph"])
 
@@ -476,9 +482,7 @@ with tab_month:
         # Apply right borders to the corresponding header cells (th)
         header_styles = []
         for col in divider_cols:
-            col_idx = (
-                display_df.columns.get_loc(col) + 1
-            )  # 1-based index for nth-child
+            col_idx = display_df.columns.get_loc(col) + 1
             header_styles.append({
                 "selector": f"th:nth-child({col_idx})",
                 "props": [("border-right", "2px solid rgba(128, 128, 128, 0.45)")],
