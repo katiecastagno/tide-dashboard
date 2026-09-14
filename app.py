@@ -95,38 +95,50 @@ def get_sun_times_dt(date_obj, lat, lon, tz_name="America/New_York"):
     return decimal_hours_to_dt(sunrise_utc), decimal_hours_to_dt(sunset_utc)
 
 
-def get_moon_phase_emoji(date_obj):
-    """Returns strictly the moon phase emoji."""
-    year = date_obj.year
-    month = date_obj.month
-    day = date_obj.day
+def get_moon_phase_emoji(date_obj, tz_name="America/New_York"):
+    """Calculates accurate moon phase relative to local noon in the station's timezone."""
+    tz = zoneinfo.ZoneInfo(tz_name)
+    # Evaluate moon phase at local noon to reflect the primary day state
+    local_dt = datetime.datetime(
+        date_obj.year, date_obj.month, date_obj.day, 12, 0, 0, tzinfo=tz
+    )
+    utc_dt = local_dt.astimezone(datetime.timezone.utc)
 
-    r = year % 100
-    r %= 19
-    if r > 9:
-        r -= 19
-    r = ((r * 11) % 30) + month + day
-    if month < 3:
-        r += 2
-    r -= 8.3 if year >= 2000 else 4.3
-    phase_age = math.floor(r) % 30
+    # Astronomical Julian Date calculation from UTC
+    y = utc_dt.year
+    m = utc_dt.month
+    d = utc_dt.day + (utc_dt.hour + utc_dt.minute / 60.0) / 24.0
+    if m <= 2:
+        y -= 1
+        m += 12
+    a = math.floor(y / 100)
+    b = 2 - a + math.floor(a / 4)
+    jd = math.floor(365.25 * (y + 4716)) + math.floor(30.6001 * (m + 1)) + d + b - 1524.5
 
-    if phase_age < 2 or phase_age > 28:
-        return "🌑"
-    elif phase_age < 7:
-        return "🌒"
-    elif phase_age < 9:
-        return "🌓"
-    elif phase_age < 14:
-        return "🌔"
-    elif phase_age < 16:
-        return "🌕"
-    elif phase_age < 22:
-        return "🌖"
-    elif phase_age < 24:
-        return "🌗"
+    # Synodic month cycle calculation (~29.530588 days relative to reference New Moon JD 2451549.5)
+    days_since_new = jd - 2451549.5
+    new_moons = days_since_new / 29.53058867
+    cycle_fraction = new_moons - math.floor(new_moons)
+    phase_age = cycle_fraction * 29.53058867
+
+    if phase_age < 1.84566:
+        return "🌑"  # New Moon
+    elif phase_age < 5.53699:
+        return "🌒"  # Waxing Crescent
+    elif phase_age < 9.22831:
+        return "🌓"  # First Quarter
+    elif phase_age < 12.91963:
+        return "🌔"  # Waxing Gibbous
+    elif phase_age < 16.61096:
+        return "🌕"  # Full Moon
+    elif phase_age < 20.30228:
+        return "🌖"  # Waning Gibbous
+    elif phase_age < 23.99361:
+        return "🌗"  # Last Quarter
+    elif phase_age < 27.68493:
+        return "🌘"  # Waning Crescent
     else:
-        return "🌘"
+        return "🌑"  # New Moon
 
 
 # --- API Functions ---
@@ -300,7 +312,9 @@ with tab_month:
                 station_info["lon"],
                 station_info.get("tz", "America/New_York"),
             )
-            moon_emoji = get_moon_phase_emoji(current_day)
+            moon_emoji = get_moon_phase_emoji(
+                current_day, station_info.get("tz", "America/New_York")
+            )
 
             day_tides = raw_hilo[raw_hilo["t"].dt.date == current_day].copy()
 
@@ -309,7 +323,9 @@ with tab_month:
 
             def format_tide(tide_row, is_high_tide):
                 time_obj = tide_row["t"].time()
-                time_str = tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
+                time_str = (
+                    tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
+                )
                 height_str = f"<span style='font-size: 0.82em; opacity: 0.8;'>({tide_row['v']:.1f} ft)</span>"
 
                 is_daylight = sr_time <= time_obj <= ss_time
@@ -317,17 +333,35 @@ with tab_month:
                 should_highlight = (
                     is_daylight and is_high_tide and highlight_daylight_highs
                 ) or (
-                    is_daylight and not is_high_tide and highlight_daylight_lows
+                    is_daylight
+                    and not is_high_tide
+                    and highlight_daylight_lows
                 )
 
                 if should_highlight:
                     return f"<mark style='background-color: #fef08a; color: #854d0e; padding: 2px 4px; border-radius: 4px; display: inline-block;'><b>{time_str}</b><br>{height_str}</mark>"
                 return f"<b>{time_str}</b><br>{height_str}"
 
-            h1 = format_tide(high_tides.iloc[0], is_high_tide=True) if len(high_tides) > 0 else "-"
-            h2 = format_tide(high_tides.iloc[1], is_high_tide=True) if len(high_tides) > 1 else "-"
-            l1 = format_tide(low_tides.iloc[0], is_high_tide=False) if len(low_tides) > 0 else "-"
-            l2 = format_tide(low_tides.iloc[1], is_high_tide=False) if len(low_tides) > 1 else "-"
+            h1 = (
+                format_tide(high_tides.iloc[0], is_high_tide=True)
+                if len(high_tides) > 0
+                else "-"
+            )
+            h2 = (
+                format_tide(high_tides.iloc[1], is_high_tide=True)
+                if len(high_tides) > 1
+                else "-"
+            )
+            l1 = (
+                format_tide(low_tides.iloc[0], is_high_tide=False)
+                if len(low_tides) > 0
+                else "-"
+            )
+            l2 = (
+                format_tide(low_tides.iloc[1], is_high_tide=False)
+                if len(low_tides) > 1
+                else "-"
+            )
 
             sr_fmt = sr_time.strftime("%I:%M").lstrip("0")
             ss_fmt = ss_time.strftime("%I:%M").lstrip("0")
@@ -383,8 +417,7 @@ with tab_month:
 
         # Create base Styler object
         styler = (
-            display_df.style
-            .hide(axis="index")
+            display_df.style.hide(axis="index")
             .apply(style_rows, axis=1)
             .set_table_styles([
                 {
@@ -421,10 +454,19 @@ with tab_month:
                 {
                     "selector": "tr:hover td",
                     "props": [
-                        ("background-color", "rgba(128, 128, 128, 0.18) !important"),
+                        (
+                            "background-color",
+                            "rgba(128, 128, 128, 0.18) !important",
+                        ),
                     ],
                 },
             ])
+        )
+
+        # Ensure Date column does not wrap and has comfortable minimum width
+        styler.set_properties(
+            subset=["Date"],
+            **{"white-space": "nowrap", "min-width": "105px"},
         )
 
         # Apply inline right borders directly to data cells for divider columns
@@ -434,7 +476,9 @@ with tab_month:
         # Apply right borders to the corresponding header cells (th)
         header_styles = []
         for col in divider_cols:
-            col_idx = display_df.columns.get_loc(col) + 1  # 1-based index for nth-child
+            col_idx = (
+                display_df.columns.get_loc(col) + 1
+            )  # 1-based index for nth-child
             header_styles.append({
                 "selector": f"th:nth-child({col_idx})",
                 "props": [("border-right", "2px solid rgba(128, 128, 128, 0.45)")],
