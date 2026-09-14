@@ -440,22 +440,21 @@ with tab_month:
                 border-bottom: 1px solid #e2e8f0;
                 line-height: 1.3;
             }
-            /* Zebra Striping */
-            .custom-tide-table tbody tr:nth-child(odd) {
-                background-color: #ffffff;
+            /* Explicit td-level Zebra Striping */
+            .custom-tide-table tbody tr:nth-child(odd) td {
+                background-color: #ffffff !important;
             }
-            .custom-tide-table tbody tr:nth-child(even) {
-                background-color: #f8fafc;
+            .custom-tide-table tbody tr:nth-child(even) td {
+                background-color: #f8fafc !important;
             }
-            .custom-tide-table tbody tr:hover {
+            /* Hover State */
+            .custom-tide-table tbody tr:hover td {
                 background-color: #e0f2fe !important;
             }
-            /* Highlight Today's Row */
-            .custom-tide-table tbody tr.today-row {
+            /* Today's Row Highlight */
+            .custom-tide-table tbody tr.today-row td {
                 background-color: #bae6fd !important;
                 font-weight: 600;
-            }
-            .custom-tide-table tbody tr.today-row td {
                 border-top: 1.5px solid #0284c7;
                 border-bottom: 1.5px solid #0284c7;
             }
