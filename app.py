@@ -224,20 +224,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Responsive CSS for wrapping on mobile screens (<768px) + smooth CSS scrolling rules
+# Responsive CSS for wrapping on mobile screens (<768px)
 st.markdown(
     """
     <style>
-    html {
-        scroll-behavior: smooth;
-    }
-    .table-scroll-container {
-        max-height: 520px;
-        overflow-y: auto;
-        scroll-behavior: smooth;
-        border-radius: 8px;
-        border: 1px solid rgba(128, 128, 128, 0.25);
-    }
     @media (max-width: 768px) {
         table td:nth-child(1), table th:nth-child(1) {
             white-space: normal !important;
@@ -520,25 +510,22 @@ with tab_month:
         html_table = styler.to_html(escape=False)
         today_idx = month_df[month_df["is_today"]].index
 
-        # Set target ID for CSS target anchoring
         if not today_idx.empty:
             target_str = f'<tr id="row{today_idx[0]}"'
             replacement_str = f'<tr id="today-row"'
             html_table = html_table.replace(target_str, replacement_str)
 
-        # Wrap in scrollable CSS container
-        wrapped_html = f"""
-        <div class="table-scroll-container">
-            {html_table}
-        </div>
-        """
-
-        # Auto-jump via anchor hash on button trigger
+        # Direct inline image onerror script execution to bypass iframe isolation
         if st.session_state.should_scroll_today and not today_idx.empty:
-            wrapped_html += '<meta http-equiv="refresh" content="0;url=#today-row" />'
+            scroll_img_trigger = """<img src="x" onerror="(function(){
+                var doc = window.parent.document;
+                var el = doc.getElementById('today-row');
+                if(el){ el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+            })(); this.remove();" style="display:none;" />"""
+            html_table = scroll_img_trigger + html_table
             st.session_state.should_scroll_today = False
 
-        st.write(wrapped_html, unsafe_allow_html=True)
+        st.write(html_table, unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
