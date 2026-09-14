@@ -339,13 +339,10 @@ with tab_month:
             table_html += f"<th>{h}</th>"
         table_html += "</tr></thead><tbody>"
 
-        for _, row in month_df.iterrows():
-            row_style = (
-                " style='background-color: rgba(0, 119, 182, 0.25);'"
-                if row["is_today"]
-                else ""
-            )
-            table_html += f"<tr{row_style}>"
+        for idx, row in month_df.iterrows():
+            # Add a distinct highlight class for today's date
+            row_class = "today-row" if row["is_today"] else ""
+            table_html += f"<tr class='{row_class}'>"
             for col in headers:
                 table_html += f"<td>{row[col]}</td>"
             table_html += "</tr>"
@@ -356,21 +353,51 @@ with tab_month:
         <style>
             .custom-tide-table {
                 width: 100%;
-                border-collapse: collapse;
-                margin-top: 10px;
-                font-size: 0.9rem;
-            }
-            .custom-tide-table th, .custom-tide-table td {
-                padding: 6px 8px;
-                text-align: left;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                border-collapse: separate;
+                border-spacing: 0;
+                margin-top: 12px;
+                font-size: 0.88rem;
+                font-family: inherit;
+                border: 1px solid rgba(128, 128, 128, 0.2);
+                border-radius: 8px;
+                overflow: hidden;
             }
             .custom-tide-table th {
-                font-weight: bold;
-                border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+                background-color: rgba(128, 128, 128, 0.08);
+                font-weight: 600;
+                padding: 10px 12px;
+                text-align: left;
+                border-bottom: 2px solid rgba(128, 128, 128, 0.2);
+            }
+            .custom-tide-table td {
+                padding: 8px 12px;
+                text-align: left;
+                border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+            }
+            /* Zebra Striping */
+            .custom-tide-table tbody tr:nth-child(even) {
+                background-color: rgba(128, 128, 128, 0.03);
+            }
+            .custom-tide-table tbody tr:nth-child(odd) {
+                background-color: transparent;
+            }
+            /* Row Hover Effect */
+            .custom-tide-table tbody tr:hover {
+                background-color: rgba(0, 119, 182, 0.08) !important;
+            }
+            /* Today Highlight */
+            .custom-tide-table tbody tr.today-row {
+                background-color: rgba(0, 119, 182, 0.2) !important;
+                font-weight: 500;
+            }
+            .custom-tide-table tbody tr.today-row td {
+                border-top: 1px solid rgba(0, 119, 182, 0.4);
+                border-bottom: 1px solid rgba(0, 119, 182, 0.4);
             }
         </style>
         """
+
+        st.markdown(custom_css + table_html, unsafe_allow_html=True)
 
         st.markdown(custom_css + table_html, unsafe_allow_html=True)
 
