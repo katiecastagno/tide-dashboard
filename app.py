@@ -387,7 +387,6 @@ with tab_month:
             return ""
 
         # Global CSS block targeting native markdown table elements directly
-        # Force high specificity overrides directly onto td elements
         table_style = """
         <style>
             div[data-testid="stMarkdownContainer"] .tide-table-wrapper table {
@@ -416,22 +415,13 @@ with tab_month:
                 line-height: 1.35 !important;
             }
             
-            /* Zebra Striping: Target TD cells in alternating TR rows */
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr:nth-child(odd) td {
-                background-color: #ffffff !important;
-            }
-            div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr:nth-child(even) td {
-                background-color: #f8fafc !important; /* Soft Slate/Gray Zebra Tint */
-            }
-            
             /* Hover state override on cells */
             div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr:hover td {
-                background-color: #e0f2fe !important; /* Soft Blue Hover */
+                background-color: #e0f2fe !important;
             }
             
-            /* Today Row Highlight override on cells */
+            /* Today Row Highlight font override */
             div[data-testid="stMarkdownContainer"] .tide-table-wrapper tr.today-row td {
-                background-color: #bae6fd !important;
                 font-weight: 600 !important;
                 border-top: 2px solid #0284c7 !important;
                 border-bottom: 2px solid #0284c7 !important;
@@ -454,12 +444,25 @@ with tab_month:
         table_html += "</tr></thead><tbody>"
 
         for idx, row in month_df.iterrows():
-            tr_class = " class='today-row'" if row["is_today"] else ""
+            is_today = row["is_today"]
+            
+            # Inline background assignment bypasses Streamlit's style engine completely
+            if is_today:
+                bg_color = "#bae6fd"  # Highlight blue for current date
+            elif idx % 2 == 1:
+                bg_color = "#f1f5f9"  # Alternating soft slate zebra stripe
+            else:
+                bg_color = "#ffffff"  # Clean white background
+
+            tr_class = " class='today-row'" if is_today else ""
             table_html += f"<tr{tr_class}>"
+            
             for col in headers:
                 cls = get_header_class(col)
                 cls_attr = f" class='{cls}'" if cls else ""
-                table_html += f"<td{cls_attr}>{row[col]}</td>"
+                style_attr = f"style='background-color: {bg_color} !important;'"
+                table_html += f"<td {cls_attr} {style_attr}>{row[col]}</td>"
+                
             table_html += "</tr>"
 
         table_html += "</tbody></table></div>"
