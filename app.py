@@ -281,9 +281,8 @@ with tab_month:
                     and highlight_daylight_lows
                 )
 
-                # Line break (<br>) forces height onto a separate line below the time
                 if should_highlight:
-                    return f"<mark style='background-color: #fef08a; color: #854d0e; padding: 2px 4px; border-radius: 4px;'><b>{time_str}</b><br>{height_str}</mark>"
+                    return f"<mark style='background-color: #fef08a; color: #854d0e; padding: 2px 4px; border-radius: 4px; display: inline-block;'><b>{time_str}</b><br>{height_str}</mark>"
                 return f"<b>{time_str}</b><br>{height_str}"
 
             h1 = (
@@ -360,41 +359,41 @@ with tab_month:
                 border-radius: 8px;
                 overflow: hidden;
             }
+            /* Centering for Table Headers */
             .custom-tide-table th {
-                background-color: #f6f8fa;
+                background-color: #f0f2f5 !important;
                 color: #1f2328;
                 font-weight: 600;
-                padding: 10px 12px;
-                text-align: left;
-                border-bottom: 2px solid #d0d7de;
-                vertical-align: middle;
+                padding: 10px 8px;
+                text-align: center !important;
+                vertical-align: middle !important;
+                border-bottom: 2px solid #c0c7de;
             }
+            /* Centering for Data Cells */
             .custom-tide-table td {
-                padding: 8px 12px;
-                text-align: left;
+                padding: 8px 6px;
+                text-align: center !important;
+                vertical-align: middle !important;
                 border-bottom: 1px solid #e1e4e8;
-                vertical-align: top;
                 line-height: 1.35;
             }
-            /* Explicit Light Zebra Striping */
-            .custom-tide-table tbody tr:nth-child(odd) {
-                background-color: #ffffff;
+            /* Direct Cell Zebra Striping for High Contrast */
+            .custom-tide-table tbody tr:nth-child(odd) td {
+                background-color: #ffffff !important;
             }
-            .custom-tide-table tbody tr:nth-child(even) {
-                background-color: #f8f9fa;
+            .custom-tide-table tbody tr:nth-child(even) td {
+                background-color: #f1f5f9 !important;
             }
-            /* Row Hover */
-            .custom-tide-table tbody tr:hover {
-                background-color: #eef6fc !important;
-            }
-            /* Today Highlight */
-            .custom-tide-table tbody tr.today-row {
+            /* Row Hover Effect */
+            .custom-tide-table tbody tr:hover td {
                 background-color: #e0f2fe !important;
-                font-weight: 600;
             }
+            /* Distinct 'Today' Row Highlight */
             .custom-tide-table tbody tr.today-row td {
-                border-top: 1px solid #0284c7;
-                border-bottom: 1px solid #0284c7;
+                background-color: #bae6fd !important;
+                font-weight: 600;
+                border-top: 1.5px solid #0284c7;
+                border-bottom: 1.5px solid #0284c7;
             }
         </style>
         """
