@@ -224,6 +224,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Responsive CSS to allow date column wrapping on mobile screens (<768px)
+st.markdown(
+    """
+    <style>
+    @media (max-width: 768px) {
+        table td:nth-child(1), table th:nth-child(1) {
+            white-space: normal !important;
+            min-width: auto !important;
+        }
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
 st.title("🌊 Tide Dashboard")
 
 # --- Session State for Date Navigation ---
@@ -293,14 +308,12 @@ with col_settings:
         highlight_daylight_lows = st.checkbox("☀️ Highlight Daylight Lows")
 
 with col_map:
-    # Use a container styled with CSS to match expander borders and align cleanly
     map_df = pd.DataFrame(
         {
             "lat": [station_info["lat"]],
             "lon": [station_info["lon"]],
         }
     )
-    # Adding a slight top margin offset matches Streamlit's expander header alignment
     st.markdown(
         "<div style='margin-top: 0px;'></div>", unsafe_allow_html=True
     )
@@ -474,7 +487,7 @@ with tab_month:
             ])
         )
 
-        # Ensure Date column does not wrap and has comfortable minimum width
+        # Ensure Date column does not wrap and has comfortable minimum width on desktop
         styler.set_properties(
             subset=["Date"],
             **{"white-space": "nowrap", "min-width": "105px"},
