@@ -390,10 +390,10 @@ with tab_month:
                 classes.append("divider-col")
             return " ".join(classes)
 
-        # Build custom styling without iframe wrapper
+        # Inject CSS targeting Streamlit's container DOM directly
         style_css = """
         <style>
-            .stApp table.custom-tide-table {
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table {
                 width: 100% !important;
                 border-collapse: separate !important;
                 border-spacing: 0 !important;
@@ -403,7 +403,7 @@ with tab_month:
                 border-radius: 8px !important;
                 overflow: hidden !important;
             }
-            .stApp table.custom-tide-table th {
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table th {
                 position: sticky !important;
                 top: 0 !important;
                 z-index: 2 !important;
@@ -415,34 +415,38 @@ with tab_month:
                 vertical-align: middle !important;
                 border-bottom: 2px solid #cbd5e1 !important;
             }
-            .stApp table.custom-tide-table td {
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table td {
                 padding: 8px 6px !important;
                 text-align: center !important;
                 vertical-align: middle !important;
                 border-bottom: 1px solid #e2e8f0 !important;
                 line-height: 1.3 !important;
             }
-            /* Zebra Striping Forced Overrides */
-            .stApp table.custom-tide-table tbody tr.row-even td {
+            
+            /* Zebra Striping Forced via Cell Overrides */
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr.row-even td {
                 background-color: #ffffff !important;
             }
-            .stApp table.custom-tide-table tbody tr.row-odd td {
-                background-color: #f8fafc !important;
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr.row-odd td {
+                background-color: #f1f5f9 !important;
             }
+            
             /* Hover Override */
-            .stApp table.custom-tide-table tbody tr:hover td {
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr:hover td {
                 background-color: #e0f2fe !important;
             }
+            
             /* Today Row Override */
-            .stApp table.custom-tide-table tbody tr.today-row td {
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table tr.today-row td {
                 background-color: #bae6fd !important;
                 font-weight: 600 !important;
                 border-top: 1.5px solid #0284c7 !important;
                 border-bottom: 1.5px solid #0284c7 !important;
             }
+            
             /* Divider Lines */
-            .stApp table.custom-tide-table th.divider-col, 
-            .stApp table.custom-tide-table td.divider-col {
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table th.divider-col, 
+            div[data-testid="stMarkdownContainer"] table.custom-tide-table td.divider-col {
                 border-right: 2px solid #94a3b8 !important;
             }
             .tide-height {
@@ -478,7 +482,8 @@ with tab_month:
 
         table_html += "</tbody></table>"
 
-        st.markdown(style_css + table_html, unsafe_allow_html=True)
+        # Use st.html for raw HTML injection bypassing Markdown filters
+        st.html(style_css + table_html)
 
     else:
         st.error("Unable to load tide data.")
