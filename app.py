@@ -253,8 +253,9 @@ if "should_scroll_today" not in st.session_state:
 
 
 def reset_to_today():
-    st.session_state.selected_month = today_date.month
-    st.session_state.selected_year = today_date.year
+    current_now = datetime.date.today()
+    st.session_state.selected_month = current_now.month
+    st.session_state.selected_year = current_now.year
     st.session_state.should_scroll_today = True
 
 
