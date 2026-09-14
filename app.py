@@ -6,7 +6,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --- Configured Locations ---
 STATIONS = {
@@ -225,6 +224,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Responsive CSS to allow date column wrapping on mobile screens (<768px)
+st.markdown(
+    """
+    <style>
+    @media (max-width: 768px) {
+        table td:nth-child(1), table th:nth-child(1) {
+            white-space: normal !important;
+            min-width: auto !important;
+        }
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
 st.title("🌊 Tide Dashboard")
 
 # --- Session State for Date Navigation ---
@@ -302,6 +316,9 @@ with col_map:
             "lat": [station_info["lat"]],
             "lon": [station_info["lon"]],
         }
+    )
+    st.markdown(
+        "<div style='margin-top: 0px;'></div>", unsafe_allow_html=True
     )
     st.map(map_df, zoom=9, height=195, use_container_width=True)
 
@@ -399,7 +416,7 @@ with tab_month:
         month_df = pd.DataFrame(records)
         display_df = month_df.drop(columns=["is_today"])
 
-        # Row styling logic
+        # Row styling logic using adaptive colors
         def style_rows(row):
             is_today = month_df.loc[row.name, "is_today"]
             if is_today:
@@ -437,7 +454,6 @@ with tab_month:
                         ("border-spacing", "0"),
                         ("border-radius", "8px"),
                         ("border", "1px solid rgba(128, 128, 128, 0.25)"),
-                        ("font-family", "sans-serif"),
                     ],
                 },
                 {
@@ -458,6 +474,15 @@ with tab_month:
                         ("padding", "8px 4px"),
                         ("line-height", "1.35"),
                         ("border-bottom", "1px solid rgba(128, 128, 128, 0.15)"),
+                    ],
+                },
+                {
+                    "selector": "tr:hover td",
+                    "props": [
+                        (
+                            "background-color",
+                            "rgba(128, 128, 128, 0.18) !important",
+                        ),
                     ],
                 },
             ])
@@ -483,53 +508,25 @@ with tab_month:
         html_table = styler.to_html(escape=False)
         today_idx = month_df[month_df["is_today"]].index
 
-        # Add target ID to today's row
+        # Set target ID and inject img-onload trigger for auto-scrolling directly in parent scope
         if not today_idx.empty:
             target_str = f'<tr id="row{today_idx[0]}"'
             replacement_str = f'<tr id="today-row"'
             html_table = html_table.replace(target_str, replacement_str)
 
-        should_scroll = st.session_state.should_scroll_today
-        st.session_state.should_scroll_today = False
+            if st.session_state.should_scroll_today:
+                # Uses image onerror trick to execute script directly within parent DOM
+                scroll_trigger = """
+                <img src="x" onerror="
+                    var el = window.parent.document.getElementById('today-row');
+                    if (!el) { el = document.getElementById('today-row'); }
+                    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                " style="display:none;" />
+                """
+                html_table += scroll_trigger
+                st.session_state.should_scroll_today = False
 
-        # Build execution wrapper via components.v1.html
-        component_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <style>
-            body {{
-                margin: 0;
-                padding: 0;
-                color-scheme: light dark;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            }}
-            @media (prefers-color-scheme: dark) {{
-                body {{ color: #e0e0e0; }}
-            }}
-        </style>
-        </head>
-        <body>
-            {html_table}
-            <script>
-                function doScroll() {{
-                    var el = document.getElementById('today-row');
-                    if (el) {{
-                        el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                    }}
-                }}
-
-                if ({'true' if should_scroll else 'false'}) {{
-                    setTimeout(doScroll, 150);
-                }}
-            </script>
-        </body>
-        </html>
-        """
-
-        # Set appropriate height to prevent inner scrollbars on desktop views
-        table_height = max(500, len(month_df) * 48 + 60)
-        components.html(component_html, height=table_height, scrolling=True)
+        st.write(html_table, unsafe_allow_html=True)
 
     else:
         st.error("Unable to load tide data.")
