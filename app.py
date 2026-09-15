@@ -335,9 +335,11 @@ with tab_month:
 
             def format_tide(tide_row, is_high_tide):
                 time_obj = tide_row["t"].time()
-                time_str = (
+                # Format time string using single-letter 'a' or 'p' suffixes
+                raw_time_str = (
                     tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
                 )
+                time_str = raw_time_str.replace("am", "a").replace("pm", "p")
                 height_str = f"<span style='font-size: 0.82em; opacity: 0.8;'>({tide_row['v']:.1f} ft)</span>"
 
                 is_daylight = sr_time <= time_obj <= ss_time
