@@ -264,7 +264,7 @@ with col3:
     )
 with col4:
     st.button(
-        "📅 This Month",
+        "📅 Current",
         on_click=reset_to_current_month,
         use_container_width=True,
     )
@@ -475,9 +475,15 @@ with tab_month:
             ])
         )
 
+        # Allow Date column to wrap gracefully on mobile viewports
         styler.set_properties(
             subset=["Date"],
-            **{"white-space": "nowrap", "min-width": "105px"},
+            **{
+                "white-space": "normal",
+                "word-break": "break-word",
+                "min-width": "75px",
+                "padding": "6px 2px",
+            },
         )
 
         border_style = {"border-right": "2px solid rgba(128, 128, 128, 0.45)"}
