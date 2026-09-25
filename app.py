@@ -34,7 +34,7 @@ STATIONS = {
         "tz": "America/New_York",
     },
     "Scituate, MA": {
-        "id": "8443863",
+        "id": "8445138",
         "lat": 42.1967,
         "lon": -70.7200,
         "tz": "America/New_York",
