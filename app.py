@@ -33,6 +33,12 @@ STATIONS = {
         "lon": -70.1856,
         "tz": "America/New_York",
     },
+    "Scituate, MA": {
+        "id": "8443863",
+        "lat": 42.1967,
+        "lon": -70.7200,
+        "tz": "America/New_York",
+    },
     "Boston, MA": {
         "id": "8443970",
         "lat": 42.3539,
@@ -241,6 +247,22 @@ def reset_to_current_month():
     st.session_state.selected_year = current_now.year
 
 
+def prev_month():
+    if st.session_state.selected_month == 1:
+        st.session_state.selected_month = 12
+        st.session_state.selected_year -= 1
+    else:
+        st.session_state.selected_month -= 1
+
+
+def next_month():
+    if st.session_state.selected_month == 12:
+        st.session_state.selected_month = 1
+        st.session_state.selected_year += 1
+    else:
+        st.session_state.selected_month += 1
+
+
 # --- Top Controls ---
 col1, col2, col3, col4 = st.columns([2, 1, 1, 1], vertical_alignment="bottom")
 with col1:
@@ -311,6 +333,21 @@ tab_month, tab_daily = st.tabs(["🗓️ Monthly Table", "📈 Daily Graph"])
 
 # --- Monthly Table View ---
 with tab_month:
+    # Top Month Navigation Bar
+    nav_top_prev, nav_top_title, nav_top_next = st.columns([1, 4, 1])
+    with nav_top_prev:
+        st.button("◀ Prev", key="nav_top_prev", on_click=prev_month, use_container_width=True)
+    with nav_top_title:
+        current_month_str = start_date.strftime("%B %Y")
+        st.markdown(
+            f"<h3 style='text-align: center; margin: 0; padding-top: 4px;'>{current_month_str}</h3>",
+            unsafe_allow_html=True,
+        )
+    with nav_top_next:
+        st.button("Next ▶", key="nav_top_next", on_click=next_month, use_container_width=True)
+
+    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
     raw_hilo = fetch_month_hilo(station_info["id"], start_date, end_date)
 
     if not raw_hilo.empty:
@@ -335,7 +372,6 @@ with tab_month:
 
             def format_tide(tide_row, is_high_tide):
                 time_obj = tide_row["t"].time()
-                # Format time string using single-letter 'a' or 'p' suffixes
                 raw_time_str = (
                     tide_row["t"].strftime("%I:%M%p").lstrip("0").lower()
                 )
@@ -504,6 +540,19 @@ with tab_month:
 
         # Render Table directly in standard Streamlit document flow
         st.write(html_table, unsafe_allow_html=True)
+
+        # Bottom Month Navigation Bar
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        nav_bot_prev, nav_bot_title, nav_bot_next = st.columns([1, 4, 1])
+        with nav_bot_prev:
+            st.button("◀ Prev Month", key="nav_bot_prev", on_click=prev_month, use_container_width=True)
+        with nav_bot_title:
+            st.markdown(
+                f"<div style='text-align: center; color: gray; font-size: 0.9em; padding-top: 6px;'>{current_month_str}</div>",
+                unsafe_allow_html=True,
+            )
+        with nav_bot_next:
+            st.button("Next Month ▶", key="nav_bot_next", on_click=next_month, use_container_width=True)
 
     else:
         st.error("Unable to load tide data.")
